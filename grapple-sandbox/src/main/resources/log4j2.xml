@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="INFO">
+	<Appenders>
+		<Console name="Console" target="SYSTEM_OUT">
+			<PatternLayout 
+				pattern="%d{MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+		</Console>
+		<RollingFile name="GlobalFileAppender" fileName="logs/liveo-api.log"
+			filePattern="logs/liveo-api-%d{yyyy-MM-dd}.log">
+			<PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+			</Policies>
+		</RollingFile>
+		<RollingFile name="ErrorFileAppender" fileName="logs/liveo-api-error.log"
+			filePattern="logs/liveo-api-error-%d{yyyy-MM-dd}.log">
+			<PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+			<ThresholdFilter level="WARN" /> <!-- ERROR WARN -->
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+			</Policies>
+		</RollingFile>
+	</Appenders>
+	<Loggers>
+		<Root level="DEBUG">
+			<AppenderRef ref="Console" />
+			<AppenderRef ref="GlobalFileAppender" />
+			<AppenderRef ref="ErrorFileAppender" />
+		</Root>
+		<Logger name="com.zaxxer.hikari" level="INFO" />
+		<Logger name="org.apache.activemq.broker.BrokerService" level="WARN" />
+		<Logger name="org.apache.activemq.broker.jmx.ManagementContext" level="WARN" />
+		<Logger name="org.apache.activemq.store.jdbc.JDBCPersistenceAdapter" level="WARN" />
+		<Logger name="org.apache.activemq.store.kahadb" level="WARN" />
+		<Logger name="org.apache.catalina.startup.VersionLoggerListener" level="WARN" />
+		<Logger name="org.apache.kahadb" level="INFO" />
+		<Logger name="org.hibernate" level="INFO" />
+		<Logger name="org.hibernate.annotations.common.Version" level="WARN" />
+		<Logger name="org.hibernate.engine.jdbc.env.internal.LobCreatorBuilderImpl" level="WARN" />
+		<Logger name="org.hibernate.hql.internal.QueryTranslatorFactoryInitiator" level="WARN" />
+		<Logger name="org.hibernate.jpa.internal.util.LogHelper" level="WARN" />
+		<Logger name="org.hibernate.orm.deprecation" level="OFF" />
+		<Logger name="org.jboss.logging" level="INFO" />
+		<Logger name="org.springframework" level="WARN" />
+		<Logger name="org.springframework.beans.factory" level="WARN" />
+		<Logger name="org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler" level="WARN" />
+		<Logger name="org.springframework.web" level="WARN" />
+		<Logger name="org.springframework.ws" level="DEBUG" />
+	</Loggers>
+</Configuration>
