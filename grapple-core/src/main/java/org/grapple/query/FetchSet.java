@@ -26,6 +26,8 @@ public interface FetchSet<X> extends Chainable<FetchSet<X>> {
 
     <Y> FetchSet<X> join(EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer);
 
+    <Y> FetchSet<Y> getJoin(EntityJoin<X, Y> join);
+
     Map<EntityJoin<X, ?>, FetchSet<?>> getJoins();
 
     FetchSet<X> orderBy(QueryField<X, ?> field, SortDirection direction);

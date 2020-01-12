@@ -10,6 +10,6 @@ public interface EntityField<X, T> extends MetadataAware {
 
     EntityResultType<T> getResultType();
 
-    Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder builder);
+    Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder);
 
 }

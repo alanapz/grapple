@@ -12,7 +12,7 @@ public class UserPrivateMessage implements Serializable {
 
     private Instant timestamp;
 
-    private User sender;
+    private User sender, sender2;
 
     private User recipient;
 
@@ -101,5 +101,14 @@ public class UserPrivateMessage implements Serializable {
         this.unread = unread;
     }
 
+    @ManyToOne
+    @JoinColumn(name = "sender_id_2")
+    public User getSender2() {
+        return sender2;
+    }
+
+    public void setSender2(User sender2) {
+        this.sender2 = sender2;
+    }
 }
 

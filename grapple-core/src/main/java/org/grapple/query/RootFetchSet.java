@@ -7,6 +7,8 @@ import org.grapple.utils.EntitySortKey;
 
 public interface RootFetchSet<X> extends FetchSet<X> {
 
+    Class<X> getEntityClass();
+
     int getFirstResult();
 
     RootFetchSet<X> setFirstResult(int firstResult);
@@ -17,7 +19,9 @@ public interface RootFetchSet<X> extends FetchSet<X> {
 
     List<EntityOrderBy<?>> getOrderBy();
 
-    QueryResultList execute(EntityManager entityManager, EntityRoot<X> entityRoot);
+    <T> RootFetchSet<X> setQueryParameter(QueryParameter<T> parameter, T value);
+
+    QueryResultList<X> execute(EntityManager entityManager, EntityRoot<X> entityRoot);
 
     @Override
     RootFetchSet<X> select(EntityField<X, ?> selection);
@@ -35,6 +39,6 @@ public interface RootFetchSet<X> extends FetchSet<X> {
     RootFetchSet<X> orderBy(EntitySortKey<X> field, SortDirection direction);
 
     @Override
-    RootFetchSet<X> apply(Consumer<FetchSet<X>> consumer);
+    RootFetchSet<X> apply(Consumer<FetchSet<X>> consumer); // Shame we can't type it as Consumer<RootFetchSet>
 
 }

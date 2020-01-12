@@ -3,7 +3,7 @@
     <groupId>org.grapple</groupId>
     <artifactId>grapple-core</artifactId>
     <packaging>jar</packaging>
-    <version>20191230.8</version>
+    <version>20200201.4</version>
     <name>Grapple Core</name>
     <dependencies>
         <dependency>
@@ -20,22 +20,17 @@
         <dependency>
             <groupId>com.graphql-java</groupId>
             <artifactId>graphql-java</artifactId>
-            <version>2020-01-08T08-53-38-a2dcfd6</version>
-        </dependency>
-        <dependency>
-            <groupId>com.graphql-java</groupId>
-            <artifactId>graphql-java-tools</artifactId>
-            <version>5.2.4</version>
-        </dependency>
-        <dependency>
-            <groupId>com.graphql-java</groupId>
-            <artifactId>graphql-java-servlet</artifactId>
-            <version>6.1.3</version>
+            <version>14.0</version>
         </dependency>
         <dependency>
             <groupId>com.graphql-java</groupId>
             <artifactId>graphql-java-extended-scalars</artifactId>
             <version>1.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <version>${reflections.version}</version>
         </dependency>
     </dependencies>
     <properties>
@@ -43,6 +38,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.test.skip>true</maven.test.skip>
         <maven.javadoc.skip>true</maven.javadoc.skip>
+        <reflections.version>0.9.12</reflections.version>
     </properties>
     <url>https://github.com/alanapz/grapple</url>
     <developers>
@@ -74,6 +70,7 @@
                     <target>1.8</target>
                     <compilerArgs>
                         <arg>-parameters</arg>
+                        <arg>-g</arg>
                         <arg>-Xlint:all</arg>
                         <arg>-Xlint:unchecked</arg>
                         <arg>-Xmaxerrs</arg>

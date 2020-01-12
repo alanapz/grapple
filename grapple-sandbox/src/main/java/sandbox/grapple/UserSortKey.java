@@ -7,9 +7,9 @@ import sandbox.grapple.entity.User;
 
 public enum UserSortKey implements EntitySortKey<User> {
 
-    USER_ID(ctx -> ctx.get(UserField.ID)),
-    OPWNER_ID(ctx -> ctx.join(UserField.COMPANY).get(CompanyField.NAME)),
-    COMPANY_ID(ctx -> ctx.join(UserField.COMPANY).get(CompanyField.ID));
+    USER_ID(ctx -> ctx.get(UserField.Id)),
+    OPWNER_ID(ctx -> ctx.join(UserField.Company).get(CompanyField.Name)),
+    COMPANY_ID(ctx -> ctx.join(UserField.Company).get(CompanyField.ID));
 
     private final EntitySortKey<User> sortKey;
 

@@ -11,5 +11,5 @@ public interface EntityJoin<X, Y> extends MetadataAware {
 
     EntityResultType<Y> getResultType();
 
-    Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder builder, Supplier<? extends From<?, X>> entity);
+    Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity);
 }

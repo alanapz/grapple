@@ -12,6 +12,6 @@ public interface EntityFilter<X> {
         return false;
     }
 
-    Predicate apply(EntityContext<X> ctx, QueryBuilder builder);
+    Predicate apply(EntityContext<X> ctx, QueryBuilder queryBuilder);
 
 }
