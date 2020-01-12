@@ -2,30 +2,30 @@ package org.grapple.schema;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.function.Consumer;
 import graphql.Scalars;
-import graphql.schema.GraphQLFieldDefinition;
 import graphql.schema.GraphQLInputObjectField;
 import graphql.schema.GraphQLInputObjectType;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLNonNull;
 import graphql.schema.GraphQLObjectType;
-import graphql.schema.GraphQLScalarType;
-import graphql.schema.GraphQLType;
 import graphql.schema.GraphQLTypeReference;
 import org.grapple.query.EntityField;
+import org.grapple.query.EntityFilter;
 import org.grapple.query.EntityJoin;
-import org.grapple.query.EntityMetadataKeys;
-import org.grapple.query.QueryField;
+import org.grapple.query.Filters;
 
-import static graphql.schema.GraphQLArgument.newArgument;
 import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
 import static graphql.schema.GraphQLInputObjectField.newInputObjectField;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.grapple.utils.Utils.coalesce;
 
 final class EntityDefinitionImpl<X> implements EntityDefinition<X> {
 
@@ -35,69 +35,239 @@ final class EntityDefinitionImpl<X> implements EntityDefinition<X> {
 
     private String name;
 
-    private final Set<EntityField<X, ?>> fields = new HashSet<>();
+    private String description;
 
-    private final List<EntityJoin<X, ?>> joins = new ArrayList<>();
+    private String containerName;
 
-    private final List<EntityJoin<X, ?>> filters = new ArrayList<>();
+    private String filterName;
+
+    private final Map<EntityField<X, ?>, EntityFieldDefinitionImpl<X, ?>> fields = new LinkedHashMap<>();
+
+    private final Map<EntityJoin<X, ?>, EntityJoinDefinitionImpl> joins = new LinkedHashMap<>();
+
+    private final Map<String, EntityFilterDefinition> filters = new LinkedHashMap<>();
 
     EntityDefinitionImpl(EntitySchemaImpl schema, Class<X> entityClass) {
         this.schema = requireNonNull(schema, "schema");
         this.entityClass = requireNonNull(entityClass, "entityClass");
-        this.name = entityClass.getSimpleName();
-    }
-
-    @Override
-    public String getName() {
-        return name;
     }
 
     @Override
     public EntityDefinition<X> setName(String name) {
-        this.name = requireNonNull(name, "name");
+        this.name = name;
+        return this;
+    }
+
+    @Override
+    public EntityDefinition<X> setDescription(String description) {
+        this.description = description;
         return this;
     }
 
     @Override
     public EntityDefinition<X> addField(EntityField<X, ?> field) {
-        fields.add(requireNonNull(field, "field"));
-        return this;
-    }
-
-    @Override
-    public EntityDefinition<X> addJoin(EntityJoin<X, ?> join) {
-        joins.add(requireNonNull(join, "join"));
-        return this;
+        return addField(field, null);
     }
 
     @Override
     @SuppressWarnings("unchecked")
+    public <T> EntityDefinition<X> addField(EntityField<X, T> field, Consumer<EntityFieldDefinition> consumer) {
+        requireNonNull(field, "field");
+        final EntityFieldDefinitionImpl<X, T> fieldDefinition = (EntityFieldDefinitionImpl<X, T>) fields.computeIfAbsent(field, unused -> new EntityFieldDefinitionImpl<>(field, schema));
+        if (consumer != null) {
+            consumer.accept(fieldDefinition);
+        }
+        return this;
+    }
+
+    @Override
+    public Map<EntityField<X, ?>, EntityFieldDefinition> getFields() {
+        return Collections.unmodifiableMap(fields);
+    }
+
+    @Override
+    public EntityDefinition<X> addJoin(EntityJoin<X, ?> join) {
+        return addJoin(join, null);
+    }
+
+    @Override
+    public EntityDefinition<X> addJoin(EntityJoin<X, ?> join, Consumer<EntityJoinDefinition> consumer) {
+        requireNonNull(join, "join");
+        final EntityJoinDefinitionImpl joinDefinition = joins.computeIfAbsent(join, unused -> new EntityJoinDefinitionImpl(join, schema));
+        if (consumer != null) {
+            consumer.accept(joinDefinition);
+        }
+        return this;
+    }
+
+    @Override
+    public Map<EntityJoin<X, ?>, EntityJoinDefinition> getJoins() {
+        return Collections.unmodifiableMap(joins);
+    }
+
+    @Override
     public EntityDefinition<X> importFrom(Class<?> definitionClass) {
         requireNonNull(definitionClass, "definitionClass");
-        for (Field field: definitionClass.getFields()) {
-            final EntityField<X, ?> entityField = (EntityField<X, ?>) getFieldOfType(EntityField.class, field, null);
-            if (entityField != null) {
-                addField(entityField);
+        for (Field field : definitionClass.getFields()) {
+            try {
+                importFrom(field.get(null));
             }
-            final EntityJoin<X, ?> entityJoin = (EntityJoin<X, ?>) getFieldOfType(EntityJoin.class, field, null);
-            if (entityJoin != null) {
-                addJoin(entityJoin);
+            catch (IllegalAccessException e) {
+                // Skip field..
             }
         }
         return this;
     }
 
-    private static <T> T getFieldOfType(Class<T> fieldType, Field field, Object object) {
-        if (!fieldType.isAssignableFrom(field.getType())) {
-            return null;
+    @SuppressWarnings("unchecked")
+    private void importFrom(Object object) {
+        if (object instanceof EntityField<?, ?>) {
+            addField((EntityField<X, ?>) object);
+            return;
         }
-        try {
-            final Object value = field.get(object);
-            return (value != null ? fieldType.cast(value) : null);
+        if (object instanceof EntityJoin<?, ?>) {
+            addJoin((EntityJoin<X, ?>) object);
+            return;
         }
-        catch (IllegalAccessException e) {
-            return null;
+        if (object instanceof Object[]) {
+            Arrays.asList((Object[]) object).forEach(this::importFrom);
+            return;
         }
+        if (object instanceof Collection<?>) {
+            ((Collection<?>) object).forEach(this::importFrom);
+            return;
+        }
+        if (object instanceof Map<?, ?>) {
+            ((Map<?, ?>) object).values().forEach(this::importFrom);
+            return;
+        }
+    }
+
+    // We are only filterable if we have at least 1 queryable scalar field
+    // We can only filter on queryable selections
+    // We can currently quick filter on scalar scalars (primitives)
+    boolean isFilterSupported(SchemaBuilderContext ctx) {
+        return !fields.isEmpty() && fields.values().stream().anyMatch(field -> field.isFilterable(ctx));
+    }
+
+    @Override
+    public String toString() {
+        return format("%s=%s", entityClass.getName(), name);
+    }
+
+    String resolveName() {
+        return coalesce(name, entityClass.getSimpleName());
+    }
+
+    String resolveDescription() {
+        return coalesce(description);
+    }
+
+    String resolveContainerName() {
+        return coalesce(containerName, schema.resolveContainerName(resolveName()));
+    }
+
+    String resolveFilterName() {
+        return coalesce(filterName, schema.resolveFilterName(resolveName()));
+    }
+
+    /* package */ void build(SchemaBuilderContext ctx) {
+
+        final GraphQLObjectType.Builder entityBuilder = new GraphQLObjectType.Builder().name(resolveName());
+
+        for (EntityFieldDefinitionImpl fieldDefinition: fields.values()) {
+            fieldDefinition.build(ctx, entityBuilder);
+        }
+        for (EntityJoinDefinitionImpl joinDefinition: joins.values()) {
+            joinDefinition.build(ctx, entityBuilder);
+        }
+
+        ctx.addEntityType(this, entityBuilder);
+
+        buildContainerType(ctx);
+        buildFilterType(ctx);
+    }
+
+    private void buildContainerType(SchemaBuilderContext ctx) {
+        // Responsible for building the XXXResults pseudo-type (results T[], total_results int)
+        ctx.addContainerType(this, new GraphQLObjectType.Builder()
+                .name(resolveContainerName())
+                .field(newFieldDefinition()
+                        .name("offset")
+                        .type(Scalars.GraphQLInt))
+                .field(newFieldDefinition()
+                        .name("count")
+                        .type(Scalars.GraphQLInt))
+                .field(newFieldDefinition()
+                        .name("results")
+                        .type(GraphQLNonNull.nonNull(GraphQLList.list(GraphQLNonNull.nonNull(GraphQLTypeReference.typeRef(resolveName()))))))
+                .field(newFieldDefinition()
+                        .name("total")
+                        .type(Scalars.GraphQLInt)));
+
+    }
+
+    @SuppressWarnings("unchecked")
+    private void buildFilterType(SchemaBuilderContext ctx) {
+        // If we are filterable, add our custom filter object
+        if (!isFilterSupported(ctx)) {
+            return;
+        }
+
+        final List<EntityFilterDefinition<X>> filterDefinitions = new ArrayList<>();
+
+        for (EntityFieldDefinitionImpl<X, ?> fieldDefinition: fields.values()) {
+            fieldDefinition.buildAdditionalQuickFilter(ctx, filterDefinitions);
+        }
+
+        final GraphQLTypeReference filterType = GraphQLTypeReference.typeRef(resolveFilterName());
+
+        if (!filterDefinitions.isEmpty()) {
+
+            filterDefinitions.add(EntityFilterDefinition.of(
+                    "OR",
+                    GraphQLList.list(GraphQLNonNull.nonNull(filterType)),
+                    args -> {
+                        final List<EntityFilter<X>> allEntityFilters = new ArrayList<>();
+                        for (Map<String, Object> filterItem : (List<Map<String, Object>>) args) {
+                            allEntityFilters.add(ctx.applyEntityFilter(this, filterItem));
+                        }
+                        return Filters.or(allEntityFilters);
+                    }));
+
+            filterDefinitions.add(EntityFilterDefinition.of(
+                    "AND",
+                    GraphQLList.list(GraphQLNonNull.nonNull(filterType)),
+                    args -> {
+                        final List<EntityFilter<X>> allEntityFilters = new ArrayList<>();
+                        for (Map<String, Object> filterItem : (List<Map<String, Object>>) args) {
+                            allEntityFilters.add(ctx.applyEntityFilter(this, filterItem));
+                        }
+                        return Filters.and(allEntityFilters);
+                    }));
+
+            filterDefinitions.add(EntityFilterDefinition.of(
+                    "NOT",
+                    GraphQLList.list(GraphQLNonNull.nonNull(filterType)),
+                    args -> {
+                        final List<EntityFilter<X>> allEntityFilters = new ArrayList<>();
+                        for (Map<String, Object> filterItem : (List<Map<String, Object>>) args) {
+                            allEntityFilters.add(Filters.not(ctx.applyEntityFilter(this, filterItem)));
+                        }
+                        return Filters.and(allEntityFilters);
+                    }));
+        }
+
+        final List<GraphQLInputObjectField> filterFields = new ArrayList<>();
+
+        for (EntityFilterDefinition<X> filterDefinition: filterDefinitions) {
+            filterFields.add(newInputObjectField().name(filterDefinition.getName()).type(filterDefinition.getType()).build());
+            ctx.addFieldFilter(this, filterDefinition.getName(), filterDefinition);
+        }
+
+        ctx.addFilterType(this, new GraphQLInputObjectType.Builder()
+                .name(filterType.getName())
+                .fields(filterFields));
     }
 
     @Override
@@ -107,138 +277,4 @@ final class EntityDefinitionImpl<X> implements EntityDefinition<X> {
         }
         return this;
     }
-
-    String getContainerTypeName() {
-        return format("%sResults", getName());
-    }
-
-    // We are only filterable if we have at least 1 queryable scalar field
-    // We can only filter on queryable selections
-    // We can currently quick filter on scalar types (primitives)
-    boolean isFilterSupported() {
-        return !fields.isEmpty() && fields.stream().anyMatch(field -> (field instanceof QueryField<?, ?>) && (schema.getRawTypeFor(field.getResultType().getJavaType()) instanceof GraphQLScalarType));
-    }
-
-    String getFilterTypeName() {
-        return format("%sFilter", getName());
-    }
-
-    @Override
-    public String toString() {
-        return format("%s=%s", entityClass.getName(), name);
-    }
-
-    /* package */ void build(SchemaBuilderContext ctx) {
-
-        final GraphQLObjectType.Builder entityBuilder = new GraphQLObjectType.Builder().name(name);
-
-        for (EntityField<X, ?> field : fields) {
-            entityBuilder.field(newFieldDefinition()
-                    .name(field.getName())
-                    .description(field.getMetadata(EntityMetadataKeys.DESCRIPTION))
-                    .deprecate(field.getMetadata(EntityMetadataKeys.DEPRECATED) ? "DEPRECATED" : null)
-                    .type(SchemaUtils.wrapOutputType(field.getResultType(), schema.getRawTypeFor(field.getResultType().getJavaType()))));
-        }
-
-        for (EntityJoin<X, ?> join : joins) {
-            final EntityDefinitionImpl<?> targetEntity = schema.getEntity(join.getResultType());
-            if (targetEntity != null) {
-                final GraphQLFieldDefinition.Builder fieldBuilder = newFieldDefinition()
-                        .name(join.getName())
-                        .type(SchemaUtils.wrapOutputType(join.getResultType(), GraphQLTypeReference.typeRef(targetEntity.getName())));
-                if (targetEntity.isFilterSupported()) {
-                    fieldBuilder.argument(newArgument().name("filter").type(GraphQLTypeReference.typeRef(targetEntity.getFilterTypeName())).build());
-                }
-                entityBuilder.field(fieldBuilder);
-            }
-        }
-
-        ctx.addEntityType(this, entityBuilder);
-
-        // Responsible for building the XXXResults pseudo-type (results T[], total_results int)
-        ctx.addContainerType(this, new GraphQLObjectType.Builder()
-                .name(getContainerTypeName())
-                .field(newFieldDefinition()
-                        .name("offset")
-                        .type(Scalars.GraphQLInt))
-                .field(newFieldDefinition()
-                        .name("count")
-                        .type(Scalars.GraphQLInt))
-                .field(newFieldDefinition()
-                        .name("results")
-                        .type(GraphQLNonNull.nonNull(GraphQLList.list(GraphQLNonNull.nonNull(GraphQLTypeReference.typeRef(getName()))))))
-                .field(newFieldDefinition()
-                        .name("total")
-                        .type(Scalars.GraphQLInt)));
-
-        // If we are filterable, add our custom filter object
-        if (isFilterSupported()) {
-            final GraphQLTypeReference filterType = GraphQLTypeReference.typeRef(getFilterTypeName());
-            ctx.addFilterType(this, new GraphQLInputObjectType.Builder()
-                    .name(getFilterTypeName())
-//                    .field(newInputObjectField()
-//                            .name("AND")
-//                            .type(GraphQLList.list(GraphQLNonNull.nonNull(filterType))))
-//                    .field(newInputObjectField()
-//                            .name("OR")
-//                            .type(GraphQLList.list(GraphQLNonNull.nonNull(filterType))))
-//                    .field(newInputObjectField()
-//                            .name("NOT")
-//                            .type(filterType))
-                    .fields(buildAdditionalFilterFields()));
-        }
-    }
-
-    private List<GraphQLInputObjectField> buildAdditionalFilterFields() {
-        final List<GraphQLInputObjectField> filter = new ArrayList<>();
-        for (EntityField<X, ?> field : fields) {
-            // We can only filter on queryable selections
-            if (!(field instanceof QueryField<?, ?>)) {
-                continue;
-            }
-            final GraphQLType queryType = schema.getRawTypeFor(field.getResultType().getJavaType());
-            // We can currently filter on scalar types (primitives)
-            if (!(queryType instanceof GraphQLScalarType)) {
-                continue;
-            }
-            final GraphQLScalarType scalarType = (GraphQLScalarType) queryType;
-            filter.add(newInputObjectField()
-                    .name(field.getName())
-                    .type(scalarType)
-                    .build());
-            final Class<?> javaType = field.getResultType().getJavaType();
-            if (javaType != boolean.class && javaType != Boolean.class) {
-                filter.add(newInputObjectField()
-                        .name(format("%s_in", field.getName()))
-                        .type(GraphQLList.list(queryType))
-                        .build());
-            }
-            if (String.class.isAssignableFrom(javaType)) {
-                filter.add(newInputObjectField()
-                        .name(format("%s_like", field.getName()))
-                        .type(scalarType)
-                        .build());
-            }
-            if (Number.class.isAssignableFrom(javaType)) {
-                filter.add(newInputObjectField()
-                        .name(format("%s_lt", field.getName()))
-                        .type(scalarType)
-                        .build());
-                filter.add(newInputObjectField()
-                        .name(format("%s_lte", field.getName()))
-                        .type(scalarType)
-                        .build());
-                filter.add(newInputObjectField()
-                        .name(format("%s_gt", field.getName()))
-                        .type(scalarType)
-                        .build());
-                filter.add(newInputObjectField()
-                        .name(format("%s_gte", field.getName()))
-                        .type(scalarType)
-                        .build());
-            }
-        }
-        return filter;
-    }
 }
-

@@ -1,6 +1,8 @@
 package sandbox.grapple;
 
-import org.grapple.query.EntityFieldBuilder;
+import static org.grapple.query.EntityFieldBuilder.attributeField;
+import static org.grapple.query.EntityFieldBuilder.attributeJoin;
+
 import org.grapple.query.EntityJoin;
 import org.grapple.query.QueryField;
 import sandbox.grapple.entity.Company;
@@ -9,10 +11,10 @@ import sandbox.grapple.entity.User;
 
 public class CompanyField {
 
-    public static final QueryField<Company, Integer> ID = EntityFieldBuilder.from(Company_.id);
+    public static final QueryField<Company, Integer> ID = attributeField(Company_.id);
 
-    public static final QueryField<Company, String> NAME = EntityFieldBuilder.from(Company_.displayName);
+    public static final QueryField<Company, String> NAME = attributeField(Company_.displayName);
 
-    public static final EntityJoin<Company, User> OWNER = EntityFieldBuilder.join(Company_.owner, false);
+    public static final EntityJoin<Company, User> OWNER = attributeJoin(Company_.owner, joinBuilder -> joinBuilder.nullable(false));
 
 }

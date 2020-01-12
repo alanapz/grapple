@@ -1,18 +1,15 @@
 package org.grapple.schema;
 
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
-import graphql.schema.GraphQLFieldDefinition;
 import org.grapple.utils.Chainable;
 
-public interface EntityFieldDefinition<X> extends Chainable<EntityFieldDefinition<X>> {
+public interface EntityFieldDefinition extends Chainable<EntityFieldDefinition> {
 
-    String getName();
+    EntityFieldDefinition setName(String name);
 
-    EntityFieldDefinition<X> setName(String name);
+    EntityFieldDefinition setDescription(String description);
 
-    EntityFieldDefinition<X> setDescription(String description);
+    EntityFieldDefinition setIsDeprecated(boolean deprecated);
 
-    EntityFieldDefinition<X> configure(UnaryOperator<GraphQLFieldDefinition.Builder> builder);
+    EntityFieldDefinition setDeprecationReason(String deprecationReason);
+
 }

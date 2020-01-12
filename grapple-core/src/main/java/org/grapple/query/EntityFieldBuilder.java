@@ -1,5 +1,9 @@
 package org.grapple.query;
 
+import static java.util.Objects.requireNonNull;
+import static org.grapple.utils.Utils.coalesce;
+import static org.grapple.utils.Utils.nullConsumer;
+
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -14,16 +18,13 @@ import org.grapple.core.MetadataKey;
 import org.grapple.utils.Chainable;
 import org.grapple.utils.LazyValue;
 
-import static java.util.Objects.requireNonNull;
-import static org.grapple.utils.Utils.coalesce;
-
 public final class EntityFieldBuilder {
 
     private EntityFieldBuilder() {
 
     }
 
-    public static <X, T> QueryField<X, T> literal(String name, Class<T> resultType, T value) {
+    public static <X, T> QueryField<X, T> literalField(String name, Class<T> resultType, T value) {
         requireNonNull(name, "name");
         requireNonNull(resultType, "resultType");
         return new QueryField<X, T>() {
@@ -39,11 +40,6 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                return null;
-            }
-
-            @Override
             public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder builder) {
                 return tuple -> value;
             }
@@ -52,35 +48,27 @@ public final class EntityFieldBuilder {
             public Expression<T> getExpression(EntityContext<X> ctx, QueryBuilder builder) {
                 return (value == null ? builder.nullLiteral(resultType) : builder.literal(value));
             }
+
+            @Override
+            public Expression<T> getOrderBy(EntityContext<X> ctx, QueryBuilder builder) {
+                return getExpression(ctx, builder);
+            }
+
+            @Override
+            public Object getMetadataValue(MetadataKey<?> metadataKey) {
+                return null;
+            }
         };
     }
 
-    public static <X, T> QueryField<X, T> from(SingularAttribute<X, T> attribute) {
-        requireNonNull(attribute, "attribute");
-        return attribute(fieldBuilder -> fieldBuilder.attribute(attribute));
+    public static <X, T> QueryField<X, T> attributeField(SingularAttribute<X, T> attribute) {
+        return attributeField(attribute, nullConsumer());
     }
 
-    public static <X, T> QueryField<X, T> from(SingularAttribute<X, T> attribute, boolean nullable) {
+    public static <X, T> QueryField<X, T> attributeField(SingularAttribute<X, T> attribute, Consumer<AttributeFieldBuilder<X, T>> fieldBuilder) {
         requireNonNull(attribute, "attribute");
-        return attribute(fieldBuilder -> fieldBuilder.attribute(attribute).nullable(nullable));
-    }
-
-    public static <X, T> QueryField<X, T> from(String name, SingularAttribute<X, T> attribute) {
-        requireNonNull(name, "name");
-        requireNonNull(attribute, "attribute");
-        return attribute(fieldBuilder -> fieldBuilder.name(name).attribute(attribute));
-    }
-
-    public static <X, T> QueryField<X, T> from(String name, SingularAttribute<X, T> attribute, boolean nullable) {
-        requireNonNull(name, "name");
-        requireNonNull(attribute, "attribute");
-        return attribute(fieldBuilder -> fieldBuilder.name(name).attribute(attribute).nullable(nullable));
-    }
-
-    public static <X, T> QueryField<X, T> attribute(Consumer<AttributeFieldBuilder<X, T>> fieldBuilder) {
         requireNonNull(fieldBuilder, "fieldBuilder");
         final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(fieldBuilder);
-        final SingularAttribute<X, T> attribute = requireNonNull(builder.attribute, "attribute required");
         final String name = coalesce(builder.name, attribute.getName());
         final boolean nullable = coalesce(builder.nullable, attribute.isOptional());
         final String description = coalesce(builder.description, QueryUtils.getDefaultDescription(attribute));
@@ -98,14 +86,9 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.DESCRIPTION) {
-                    return description;
-                }
-                if (metadataKey == EntityMetadataKeys.DEPRECATED) {
-                    return deprecated;
-                }
-                return null;
+            public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder builder) {
+                final Path<T> attributePath = ctx.addSelection(getExpression(ctx, builder));
+                return tuple -> tuple.get(attributePath);
             }
 
             @Override
@@ -114,27 +97,30 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder builder) {
-                final Path<T> attributePath = getExpression(ctx, builder);
-                ctx.addSelection(attributePath);
-                return tuple -> tuple.get(attributePath);
+            public Path<T> getOrderBy(EntityContext<X> ctx, QueryBuilder builder) {
+                return getExpression(ctx, builder);
+            }
+
+            @Override
+            public Object getMetadataValue(MetadataKey<?> metadataKey) {
+                if (metadataKey == EntityMetadataKeys.DESCRIPTION) {
+                    return description;
+                }
+                if (metadataKey == EntityMetadataKeys.IS_DEPRECATED) {
+                    return deprecated;
+                }
+                return null;
             }
         };
     }
 
-    public static <X, T> QueryField<X, T> from(String name, EntityResultType<T> resultType, ExpressionResultSupplier<X, T> supplier) {
-        requireNonNull(name, "name");
-        requireNonNull(resultType, "resultType");
-        requireNonNull(supplier, "supplier");
-        return expression(fieldBuilder -> fieldBuilder.name(name).resultType(resultType).supplier(supplier));
-    }
-
-    public static <X, T> QueryField<X, T> expression(Consumer<ExpressionFieldBuilder<X, T>> fieldBuilder) {
+    public static <X, T> QueryField<X, T> expressionField(Consumer<ExpressionFieldBuilder<X, T>> fieldBuilder) {
         requireNonNull(fieldBuilder, "fieldBuilder");
         final ExpressionFieldBuilder<X, T> builder = new ExpressionFieldBuilder<X, T>().apply(fieldBuilder);
         final String name = requireNonNull(builder.name, "name required");
         final EntityResultType<T> resultType = requireNonNull(builder.resultType, "result type required");
-        final ExpressionResultSupplier<X, T> supplier  = requireNonNull(builder.supplier, "supplier required");
+        final ExpressionResolver<X, T> expression = requireNonNull(builder.expression, "expression required");
+        final ExpressionResolver<X, ?> orderBy = coalesce(builder.orderBy, builder.expression);
         final String description = builder.description;
         final boolean deprecated = coalesce(builder.deprecated, false);
         return new QueryField<X, T>() {
@@ -150,17 +136,6 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.DESCRIPTION) {
-                    return description;
-                }
-                if (metadataKey == EntityMetadataKeys.DEPRECATED) {
-                    return deprecated;
-                }
-                return null;
-            }
-
-            @Override
             public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder builder) {
                 final Expression<T> expression = getExpression(ctx, builder);
                 ctx.addSelection(expression);
@@ -169,13 +144,28 @@ public final class EntityFieldBuilder {
 
             @Override
             public Expression<T> getExpression(EntityContext<X> ctx, QueryBuilder builder) {
-                return supplier.get(ctx, builder);
+                return expression.get(ctx, builder);
+            }
+
+            @Override
+            public Expression<?> getOrderBy(EntityContext<X> ctx, QueryBuilder builder) {
+                return orderBy.get(ctx, builder);
+            }
+
+            @Override
+            public Object getMetadataValue(MetadataKey<?> metadataKey) {
+                if (metadataKey == EntityMetadataKeys.DESCRIPTION) {
+                    return description;
+                }
+                if (metadataKey == EntityMetadataKeys.IS_DEPRECATED) {
+                    return deprecated;
+                }
+                return null;
             }
         };
     }
 
-
-    public static <X, T> EntityField<X, T> selection(String name, EntityResultType<T> resultType, SelectionResultSupplier<X, T> supplier) {
+    public static <X, T> EntityField<X, T> selectionField(String name, EntityResultType<T> resultType, SelectionResultSupplier<X, T> supplier) {
         requireNonNull(name, "name");
         requireNonNull(resultType, "resultType");
         requireNonNull(supplier, "supplier");
@@ -203,32 +193,14 @@ public final class EntityFieldBuilder {
         };
     }
 
-    public static <X, T> EntityJoin<X, T> join(SingularAttribute<X, T> attribute) {
-        requireNonNull(attribute, "attribute");
-        return attributeJoin(fieldBuilder -> fieldBuilder.attribute(attribute));
+    public static <X, T> EntityJoin<X, T> attributeJoin(SingularAttribute<X, T> attribute) {
+        return attributeJoin(attribute, nullConsumer());
     }
 
-    public static <X, T> EntityJoin<X, T> join(SingularAttribute<X, T> attribute, boolean nullable) {
+    public static <X, T> EntityJoin<X, T> attributeJoin(SingularAttribute<X, T> attribute, Consumer<AttributeFieldBuilder<X, T>> joinBuilder) {
+        requireNonNull(joinBuilder, "joinBuilder");
         requireNonNull(attribute, "attribute");
-        return attributeJoin(fieldBuilder -> fieldBuilder.attribute(attribute).nullable(nullable));
-    }
-
-    public static <X, T> EntityJoin<X, T> join(String name, SingularAttribute<X, T> attribute) {
-        requireNonNull(name, "name");
-        requireNonNull(attribute, "attribute");
-        return attributeJoin(fieldBuilder -> fieldBuilder.name(name).attribute(attribute));
-    }
-
-    public static <X, T> EntityJoin<X, T> join(String name, SingularAttribute<X, T> attribute, boolean nullable) {
-        requireNonNull(name, "name");
-        requireNonNull(attribute, "attribute");
-        return attributeJoin(fieldBuilder -> fieldBuilder.name(name).attribute(attribute).nullable(nullable));
-    }
-
-    public static <X, T> EntityJoin<X, T> attributeJoin(Consumer<AttributeFieldBuilder<X, T>> fieldBuilder) {
-        requireNonNull(fieldBuilder, "fieldBuilder");
-        final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(fieldBuilder);
-        final SingularAttribute<X, T> attribute = requireNonNull(builder.attribute, "attribute required");
+        final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(joinBuilder);
         final String name = coalesce(builder.name, attribute.getName());
         final boolean nullable = coalesce(builder.nullable, attribute.isOptional());
         final String description = coalesce(builder.description, QueryUtils.getDefaultDescription(attribute));
@@ -246,19 +218,19 @@ public final class EntityFieldBuilder {
             }
 
             @Override
+            public Supplier<Join<?, T>> join(EntityContext<X> ctx, QueryBuilder builder, Supplier<? extends From<?, X>> entity) {
+                return LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT));
+            }
+
+            @Override
             public Object getMetadataValue(MetadataKey<?> metadataKey) {
                 if (metadataKey == EntityMetadataKeys.DESCRIPTION) {
                     return description;
                 }
-                if (metadataKey == EntityMetadataKeys.DEPRECATED) {
+                if (metadataKey == EntityMetadataKeys.IS_DEPRECATED) {
                     return deprecated;
                 }
                 return null;
-            }
-
-            @Override
-            public Supplier<Join<?, T>> join(EntityContext<X> ctx, QueryBuilder builder, Supplier<? extends From<?, X>> entity) {
-                return LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT));
             }
         };
     }
@@ -270,9 +242,9 @@ public final class EntityFieldBuilder {
         return expressionJoin(fieldBuilder -> fieldBuilder.name(name).resultType(resultType).supplier(supplier));
     }
 
-    public static <X, Y> EntityJoin<X, Y> expressionJoin(Consumer<ExpressionJoinBuilder<X, Y>> fieldBuilder) {
-        requireNonNull(fieldBuilder, "fieldBuilder");
-        final ExpressionJoinBuilder<X, Y> builder = new ExpressionJoinBuilder<X, Y>().apply(fieldBuilder);
+    public static <X, Y> EntityJoin<X, Y> expressionJoin(Consumer<ExpressionJoinBuilder<X, Y>> joinBuilder) {
+        requireNonNull(joinBuilder, "joinBuilder");
+        final ExpressionJoinBuilder<X, Y> builder = new ExpressionJoinBuilder<X, Y>().apply(joinBuilder);
         final String name = requireNonNull(builder.name, "name required");
         final EntityResultType<Y> resultType = requireNonNull(builder.resultType, "result type required");
         final JoinSupplier<X, Y> supplier  = requireNonNull(builder.supplier, "supplier required");
@@ -291,38 +263,24 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                return null;
+            public Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder builder, Supplier<? extends From<?, X>> entity) {
+                return supplier.join(ctx, builder);
             }
 
             @Override
-            public Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder builder, Supplier<? extends From<?, X>> entity) {
-                return supplier.join(ctx, builder);
+            public Object getMetadataValue(MetadataKey<?> metadataKey) {
+                if (metadataKey == EntityMetadataKeys.DESCRIPTION) {
+                    return description;
+                }
+                if (metadataKey == EntityMetadataKeys.IS_DEPRECATED) {
+                    return deprecated;
+                }
+                return null;
             }
         };
     }
 
-    @FunctionalInterface
-    public interface ExpressionResultSupplier<X, T> {
-
-        Expression<T> get(EntityContext<X> ctx, QueryBuilder builder);
-    }
-
-    @FunctionalInterface
-    public interface SelectionResultSupplier<X, T> {
-
-        Function<Tuple, T> get(EntityContext<X> ctx, QueryBuilder builder);
-    }
-
-    @FunctionalInterface
-    public interface JoinSupplier<X, Y> {
-
-        Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder builder);
-    }
-
     public static final class AttributeFieldBuilder<X, T> implements Chainable<AttributeFieldBuilder<X, T>> {
-
-        SingularAttribute<X, T> attribute;
 
         String name;
 
@@ -331,11 +289,6 @@ public final class EntityFieldBuilder {
         String description;
 
         Boolean deprecated;
-
-        public AttributeFieldBuilder<X, T> attribute(SingularAttribute<X, T> attribute) {
-            this.attribute = attribute;
-            return this;
-        }
 
         public AttributeFieldBuilder<X, T> name(String name) {
             this.name = name;
@@ -371,13 +324,33 @@ public final class EntityFieldBuilder {
         }
     }
 
+    @FunctionalInterface
+    public interface ExpressionResolver<X, T> {
+
+        Expression<T> get(EntityContext<X> ctx, QueryBuilder builder);
+    }
+
+    @FunctionalInterface
+    public interface SelectionResultSupplier<X, T> {
+
+        Function<Tuple, T> get(EntityContext<X> ctx, QueryBuilder builder);
+    }
+
+    @FunctionalInterface
+    public interface JoinSupplier<X, Y> {
+
+        Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder builder);
+    }
+
     public static final class ExpressionFieldBuilder<X, T> implements Chainable<ExpressionFieldBuilder<X, T>> {
 
         String name;
 
         EntityResultType<T> resultType;
 
-        ExpressionResultSupplier<X, T> supplier;
+        ExpressionResolver<X, T> expression;
+
+        ExpressionResolver<X, ?> orderBy;
 
         String description;
 
@@ -393,8 +366,13 @@ public final class EntityFieldBuilder {
             return this;
         }
 
-        public ExpressionFieldBuilder<X, T> supplier(ExpressionResultSupplier<X, T> supplier) {
-            this.supplier = supplier;
+        public ExpressionFieldBuilder<X, T> expression(ExpressionResolver<X, T> expression) {
+            this.expression = expression;
+            return this;
+        }
+
+        public ExpressionFieldBuilder<X, T> orderBy(ExpressionResolver<X, ?> orderBy) {
+            this.orderBy = orderBy;
             return this;
         }
 

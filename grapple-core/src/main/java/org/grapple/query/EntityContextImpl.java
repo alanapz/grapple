@@ -1,8 +1,5 @@
 package org.grapple.query;
 
-import static java.util.Objects.requireNonNull;
-import static org.grapple.query.Utils.cast;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -18,6 +15,9 @@ import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.SetAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import org.grapple.utils.LazyValue;
+
+import static java.util.Objects.requireNonNull;
+import static org.grapple.query.Utils.cast;
 
 final class EntityContextImpl<X> implements EntityContext<X> {
 

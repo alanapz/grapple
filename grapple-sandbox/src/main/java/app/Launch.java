@@ -35,16 +35,23 @@ public class Launch {
 
     public static void main(String[] args) throws Exception {
 
+
         final EntityManagerFactory emf = Persistence.createEntityManagerFactory("grapple-sandbox");
         final EntityManager entityManager = emf.createEntityManager();
 
         schemaTest();
+        if (true) {
+            return;
+        }
+
 
         final RootFetchSet<User> fetchSet = GrappleQuery.newQuery();
         fetchSet.select(UserField.ID);
         fetchSet.select(UserField.IS_GREATESST);
         fetchSet.orderBy(UserField.IS_GREATESST, SortDirection.ASC);
         fetchSet.execute(entityManager, EntityRootBuilder.from(User.class));
+
+        System.out.println(fetchSet);
 
         if (true) {
             return;
@@ -91,7 +98,7 @@ public class Launch {
 //                .build();
 
 //        ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query { listAllUsers(filter:{}) { results { displayName } } }").build();
-        executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(filter: {id_in: [1,2,3]}) {results{displayName}}}").build();
+        executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(filter: {isNameAlan: true, id: 5, id_in: [1,2,3], NOT: { id: 99, id_in: [991, 992] }, OR: [ {id: 4 }, {id: 5, id_in: [5, 1]}]}) {results{displayName}}}").build();
         ExecutionResult executionResult = graphQL.execute(executionInput);
 
         System.out.print(executionResult);
@@ -109,17 +116,17 @@ public class Launch {
         fetchSet.select(UserPrivateMessageField.ID);
         fetchSet.select(UserPrivateMessageField.MESSAGE);
         fetchSet.select(UserPrivateMessageField.TIMESTAMP);
-        fetchSet.join(UserPrivateMessageField.SENDER).join(UserField.COMPANY).select(CompanyField.ID);
+        fetchSet.join(UserPrivateMessageField.SENDER, x -> x.join(UserField.COMPANY, y -> y.select(CompanyField.ID)));
         // fetchSet.join(UserPrivateMessageField.RECIPIENT).join(UserField.COMPANY).select(CompanyField.ID);
-        fetchSet.join(UserPrivateMessageField.SENDER).join(UserField.COMPANY).select(CompanyField.ID);
+        fetchSet.join(UserPrivateMessageField.SENDER, x -> x.join(UserField.COMPANY, y -> y.select(CompanyField.ID)));
         // fetchSet.join(UserPrivateMessageField.RECIPIENT).join(UserField.COMPANY).select(CompanyField.ID);
-        fetchSet.join(UserPrivateMessageField.SENDER).join(UserField.COMPANY).select(CompanyField.ID);
+        fetchSet.join(UserPrivateMessageField.SENDER, x -> x.join(UserField.COMPANY, y -> y.select(CompanyField.ID)));
         // fetchSet.join(UserPrivateMessageField.RECIPIENT).join(UserField.COMPANY).select(CompanyField.ID);
-        fetchSet.join(UserPrivateMessageField.SENDER).join(UserField.COMPANY).select(CompanyField.ID);
+        fetchSet.join(UserPrivateMessageField.SENDER, x -> x.join(UserField.COMPANY, y -> y.select(CompanyField.ID)));
         // fetchSet.join(UserPrivateMessageField.RECIPIENT).join(UserField.COMPANY).select(CompanyField.ID);
         fetchSet.orderBy(UserPrivateMessageField.TIMESTAMP, SortDirection.ASC);
-        fetchSet.join(UserPrivateMessageField.RECIPIENT).orderBy(UserField.ID, SortDirection.ASC);
-        fetchSet.join(UserPrivateMessageField.RECIPIENT).orderBy(UserSortKey.OPWNER_ID, SortDirection.ASC);
+//        fetchSet.join(UserPrivateMessageField.RECIPIENT).orderBy(UserField.ID, SortDirection.ASC);
+//        fetchSet.join(UserPrivateMessageField.RECIPIENT).orderBy(UserSortKey.OPWNER_ID, SortDirection.ASC);
 /*
         fetchSet.filter(new EntityFilter<UserPrivateMessage>() {
 

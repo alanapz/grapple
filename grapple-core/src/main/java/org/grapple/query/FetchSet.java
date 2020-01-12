@@ -22,7 +22,7 @@ public interface FetchSet<X> extends Chainable<FetchSet<X>> {
 
     Set<EntityFilter<X>> getFilters();
 
-    <Y> FetchSet<Y> join(EntityJoin<X, Y> join);
+    <Y> FetchSet<Y> getJoin(EntityJoin<X, Y> join);
 
     <Y> FetchSet<X> join(EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer);
 

@@ -91,9 +91,6 @@ public class TypeRegistry {
             if (rawType.isArray()) {
                 return GraphQLList.list(getType(name, rawType.getComponentType()));
             }
-            if (Enum.class.isAssignableFrom(rawType)) {
-                return GraphQLEnumType.newEnum().name(rawType.getSimpleName() + "Enum").build();
-            }
         }
         if (type instanceof ParameterizedType) {
             final ParameterizedType parameterizedType = (ParameterizedType) type;
@@ -107,10 +104,6 @@ public class TypeRegistry {
             return GraphQLList.list(getType(name, arrayType.getGenericComponentType()));
         }
         throw new IllegalArgumentException(format("Unexpected type: %s for: %s", type, name));
-    }
-
-    private void buildEnumType() {
-//        return GraphQLEnumType.newEnum().name(rawType.getSimpleName() + "Enum").build();
     }
 
     static {

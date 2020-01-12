@@ -11,7 +11,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="grapple-core" />
+    <orderEntry type="library" name="Maven: org.grapple:grapple-core:20191230.8" level="project" />
     <orderEntry type="library" name="Maven: org.jooq:jool:0.9.12" level="project" />
     <orderEntry type="library" name="Maven: com.graphql-java:graphql-java:2020-01-08T08-53-38-a2dcfd6" level="project" />
     <orderEntry type="library" name="Maven: org.antlr:antlr4-runtime:4.7.2" level="project" />

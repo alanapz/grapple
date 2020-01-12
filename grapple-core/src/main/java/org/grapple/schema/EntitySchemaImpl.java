@@ -1,20 +1,31 @@
 package org.grapple.schema;
 
 import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URL;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.YearMonth;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import graphql.Scalars;
+import graphql.scalars.ExtendedScalars;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.FieldCoordinates;
 import graphql.schema.GraphQLArgument;
 import graphql.schema.GraphQLCodeRegistry;
+import graphql.schema.GraphQLEnumType;
 import graphql.schema.GraphQLNonNull;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
@@ -24,6 +35,7 @@ import graphql.schema.GraphQLType;
 import graphql.schema.GraphQLTypeReference;
 import graphql.schema.idl.SchemaPrinter;
 import org.grapple.query.EntityResultType;
+import org.grapple.scalars.GrappleScalars;
 
 final class EntitySchemaImpl implements EntitySchema {
 
@@ -32,6 +44,12 @@ final class EntitySchemaImpl implements EntitySchema {
     private final Map<Class<?>, GraphQLOutputType> typeMappings = new HashMap<>();
 
     private final Map<String, GraphQLType> customTypes = new HashMap<>();
+
+    private UnaryOperator<String> containerName = entityName -> format("%sResults", entityName);
+
+    private UnaryOperator<String> filterName = entityName -> format("%sFilter", entityName);
+
+    /// private static final Map<Enum<?>, GraphQLOutputType> defaultTypeMappings = new HashMap<>();
 
     private static final Map<Class<?>, GraphQLOutputType> defaultTypeMappings = new HashMap<>();
 
@@ -53,41 +71,18 @@ final class EntitySchemaImpl implements EntitySchema {
         return this;
     }
 
-//    @Override
-//    public EntitySchema addCustomType(String typeAlias, GraphQLType type) {
-//
-//    }
-
     @Override
-    public EntitySchema apply(Consumer<EntitySchema> consumer) {
-        if (consumer != null) {
-            consumer.accept(this);
-        }
+    public EntitySchema setContainerName(UnaryOperator<String> containerName) {
+        requireNonNull(containerName, "containerName");
+        this.containerName = containerName;
         return this;
     }
 
     @Override
-    public String toString() {
-        return defaultSchemaPrinter.print(generate());
-    }
-
-    EntityDefinitionImpl<?> getEntity(EntityResultType<?> type) {
-        requireNonNull(type, "type");
-        return entities.get(type.getJavaType());
-    }
-
-    GraphQLOutputType getRawTypeFor(Class<?> rawType) {
-        requireNonNull(rawType, "rawType");
-        if (entities.containsKey(rawType)) {
-            return GraphQLTypeReference.typeRef(entities.get(rawType).getName());
-        }
-        if (typeMappings.containsKey(rawType)) {
-            return typeMappings.get(rawType);
-        }
-        if (defaultTypeMappings.containsKey(rawType)) {
-            return defaultTypeMappings.get(rawType);
-        }
-        return null;
+    public EntitySchema setFilterName(UnaryOperator<String> filterName) {
+        requireNonNull(filterName, "filterName");
+        this.filterName = filterName;
+        return this;
     }
 
     public GraphQLSchema generate() {
@@ -103,7 +98,7 @@ final class EntitySchemaImpl implements EntitySchema {
 
         builder.query(objectBuilder);
 
-        final SchemaBuilderContext ctx = new SchemaBuilderContext();
+        final SchemaBuilderContext ctx = new SchemaBuilderContext(this);
 
         for (EntityDefinitionImpl<?> metadata: entities.values()) {
             metadata.build(ctx);
@@ -112,7 +107,7 @@ final class EntitySchemaImpl implements EntitySchema {
         ctx.generate(builder);
 
         builder.codeRegistry(GraphQLCodeRegistry.newCodeRegistry()
-                .dataFetcher(FieldCoordinates.coordinates("query", "listAllUsers"), new RootDataFetcher())
+                .dataFetcher(FieldCoordinates.coordinates("query", "listAllUsers"), new RootDataFetcher(ctx, entities.values().iterator().next()))
 //                .dataFetcher(FieldCoordinates.coordinates("User", "username"),  new Data2())
                 .build());
 
@@ -122,22 +117,84 @@ final class EntitySchemaImpl implements EntitySchema {
         return builder.build();
     }
 
-    private static class RootDataFetcher implements DataFetcher {
+    String resolveContainerName(String entityName) {
+        requireNonNull(entityName, "entityName");
+        return containerName.apply(entityName);
+    }
+
+    String resolveFilterName(String entityName) {
+        requireNonNull(entityName, "entityName");
+        return filterName.apply(entityName);
+    }
+
+    EntityDefinitionImpl<?> getEntityFor(EntityResultType<?> type) {
+        requireNonNull(type, "type");
+        return entities.get(type.getJavaType());
+    }
+
+    GraphQLOutputType getUnwrappedTypeFor(SchemaBuilderContext ctx, Class<?> rawType) {
+        requireNonNull(rawType, "rawType");
+        if (typeMappings.containsKey(rawType)) {
+            return typeMappings.get(rawType);
+        }
+        if (defaultTypeMappings.containsKey(rawType)) {
+            return defaultTypeMappings.get(rawType);
+        }
+        return ctx.getUnwrappedTypeFor(rawType);
+    }
+
+    <E extends Enum<?>> GraphQLEnumType buildEnumTypeForClass(Class<E> enumClass) {
+        requireNonNull(enumClass, "enumClass");
+        final GraphQLEnumType.Builder typeBuilder = GraphQLEnumType
+                .newEnum()
+                .name(enumClass.getSimpleName());
+        for (Enum<?> enumValue: enumClass.getEnumConstants()) {
+            typeBuilder.value(enumValue.name(), enumValue);
+        }
+        return typeBuilder.build();
+    }
+
+    @Override
+    public EntitySchema apply(Consumer<EntitySchema> consumer) {
+        if (consumer != null) {
+            consumer.accept(this);
+        }
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        return defaultSchemaPrinter.print(generate());
+    }
+
+    private class RootDataFetcher implements DataFetcher {
+
+        private SchemaBuilderContext ctx;
+
+        private EntityDefinitionImpl<?> entityDefinition;
+
+        private RootDataFetcher(SchemaBuilderContext ctx, EntityDefinitionImpl<?> entityDefinition) {
+            this.ctx = ctx;
+            this.entityDefinition = entityDefinition;
+            System.out.println(entityDefinition);
+        }
 
         @Override
         public String get(DataFetchingEnvironment dataFetchingEnvironment) throws Exception {
             System.out.println("********************************");
-            System.out.println(dataFetchingEnvironment);
-            System.out.println(dataFetchingEnvironment.getField());
-            System.out.println(dataFetchingEnvironment.getParentType());
-            System.out.println(dataFetchingEnvironment.getArguments());
-            System.out.println(dataFetchingEnvironment.getCacheControl());
-            System.out.println((Object) dataFetchingEnvironment.getSource());
-            System.out.println((Object) dataFetchingEnvironment.getContext());
-            System.out.println((Object) dataFetchingEnvironment.getRoot());
+//            System.out.println(dataFetchingEnvironment);
+//            System.out.println(dataFetchingEnvironment.getField());
+//            System.out.println(dataFetchingEnvironment.getParentType());
+//            System.out.println(dataFetchingEnvironment.getArguments());
+//            System.out.println(dataFetchingEnvironment.getArguments().values());
+//            System.out.println((Object) dataFetchingEnvironment.getSource());
+//            System.out.println((Object) dataFetchingEnvironment.getContext());
+//            System.out.println((Object) dataFetchingEnvironment.getRoot());
 
-            Object xxx = dataFetchingEnvironment.getArguments().get("filter");
-            Object xxx2 = ((Map) xxx).get("id_in");
+            final Map<String, Object> filter = (Map<String, Object>) dataFetchingEnvironment.getArguments().get("filter");
+
+            System.out.println(ctx.applyEntityFilter(entityDefinition, filter));
+
 
             Thread.dumpStack();
             System.exit(0);
@@ -146,17 +203,45 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     static {
-        addDefaultType(Scalars.GraphQLInt, int.class, Integer.class);
-        addDefaultType(Scalars.GraphQLFloat, float.class, Float.class);
-        addDefaultType(Scalars.GraphQLString, String.class);
-        addDefaultType(Scalars.GraphQLBoolean, boolean.class, Boolean.class);
-        addDefaultType(Scalars.GraphQLLong, long.class, Long.class);
-        addDefaultType(Scalars.GraphQLShort, short.class, Short.class);
-        addDefaultType(Scalars.GraphQLByte, byte.class, Byte.class);
-        addDefaultType(Scalars.GraphQLBigInteger, BigInteger.class);
-        addDefaultType(Scalars.GraphQLBigDecimal, BigDecimal.class);
-        addDefaultType(Scalars.GraphQLChar, char.class, Character.class);
 
+        // Primitives
+        defaultTypeMappings.put(boolean.class, GraphQLNonNull.nonNull(Scalars.GraphQLBoolean));
+        defaultTypeMappings.put(byte.class, GraphQLNonNull.nonNull(Scalars.GraphQLByte));
+        defaultTypeMappings.put(short.class, GraphQLNonNull.nonNull(Scalars.GraphQLShort));
+        defaultTypeMappings.put(int.class, GraphQLNonNull.nonNull(Scalars.GraphQLInt));
+        defaultTypeMappings.put(long.class, GraphQLNonNull.nonNull(Scalars.GraphQLLong));
+        defaultTypeMappings.put(char.class, GraphQLNonNull.nonNull(Scalars.GraphQLChar));
+        defaultTypeMappings.put(float.class, GraphQLNonNull.nonNull(Scalars.GraphQLFloat));
+        defaultTypeMappings.put(double.class, GraphQLNonNull.nonNull(Scalars.GraphQLFloat)); // No "double" type
+
+        // Primitive object wrappers
+        defaultTypeMappings.put(Boolean.class, Scalars.GraphQLBoolean);
+        defaultTypeMappings.put(Byte.class, Scalars.GraphQLByte);
+        defaultTypeMappings.put(Short.class, Scalars.GraphQLShort);
+        defaultTypeMappings.put(Integer.class, Scalars.GraphQLInt);
+        defaultTypeMappings.put(Long.class, Scalars.GraphQLLong);
+        defaultTypeMappings.put(Character.class, Scalars.GraphQLChar);
+        defaultTypeMappings.put(Float.class, Scalars.GraphQLFloat);
+        defaultTypeMappings.put(Double.class, Scalars.GraphQLFloat); // No "Double" type
+
+        defaultTypeMappings.put(String.class, Scalars.GraphQLString);
+
+        defaultTypeMappings.put(UUID.class, Scalars.GraphQLID);
+
+        defaultTypeMappings.put(BigDecimal.class, Scalars.GraphQLBigDecimal);
+        defaultTypeMappings.put(BigInteger.class, Scalars.GraphQLBigInteger);
+
+        defaultTypeMappings.put(LocalDate.class, ExtendedScalars.Date);
+        defaultTypeMappings.put(OffsetDateTime.class, ExtendedScalars.DateTime);
+        defaultTypeMappings.put(Object.class, ExtendedScalars.Object);
+        defaultTypeMappings.put(Locale.class, ExtendedScalars.Locale);
+        defaultTypeMappings.put(OffsetTime.class, ExtendedScalars.Time);
+        defaultTypeMappings.put(URL.class, ExtendedScalars.Url);
+
+        defaultTypeMappings.put(YearMonth.class, GrappleScalars.YearMonthScalar);
+    }
+
+    static {
         GraphQLObjectType.Builder builder = new GraphQLObjectType.Builder().name("FormattedTimestamp");
         builder.field(newFieldDefinition()
                 .name("timestamp_utc")

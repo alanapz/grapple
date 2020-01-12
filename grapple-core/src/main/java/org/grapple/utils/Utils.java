@@ -1,9 +1,21 @@
 package org.grapple.utils;
 
+import java.util.function.Consumer;
+import org.reflections.Reflections;
+
 public final class Utils {
 
     private Utils() {
 
+    }
+
+    public static void main(String[] args) {
+        Reflections reflections = new Reflections("org.grapple");
+        System.out.println(reflections.getSubTypesOf(Chainable.class));
+    }
+
+    public static <T> Consumer<T> nullConsumer() {
+        return (val) -> {};
     }
 
     @SafeVarargs
