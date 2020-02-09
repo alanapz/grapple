@@ -2,7 +2,7 @@ package org.grapple.query;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import org.grapple.utils.Chainable;
+import org.grapple.core.Chainable;
 
 public interface QueryResultRow<X> extends Chainable<QueryResultRow<X>> {
 

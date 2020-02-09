@@ -2,8 +2,8 @@ package org.grapple.schema;
 
 import java.util.Set;
 import graphql.schema.GraphQLSchema;
+import org.grapple.core.Chainable;
 import org.grapple.reflect.TypeConverter;
-import org.grapple.utils.Chainable;
 
 public interface EntitySchemaConfiguration extends Chainable<EntitySchemaConfiguration> {
 

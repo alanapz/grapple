@@ -9,7 +9,7 @@
         <dependency>
             <groupId>org.grapple</groupId>
             <artifactId>grapple-core</artifactId>
-            <version>20200201.0</version>
+            <version>20200201.4</version>
         </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>

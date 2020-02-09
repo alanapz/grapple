@@ -1,15 +1,11 @@
 package app;
 
-import static org.grapple.query.EntityRootBuilder.entityRoot;
-import static org.grapple.reflect.ClassLiteral.classLiteral;
+import static java.util.Objects.requireNonNull;
 import static org.grapple.utils.Utils.toSet;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.Stack;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
@@ -32,13 +28,9 @@ import org.grapple.reflect.GenericLiteral;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntityDefinition;
 import org.grapple.schema.EntityDefinitionScannerCallback;
-import org.grapple.schema.EntityQueryDefinition;
-import org.grapple.schema.EntityQueryScannerCallback;
-import org.grapple.schema.EntityQueryType;
 import org.grapple.schema.EntitySchema;
 import org.grapple.schema.EntitySchemaListener;
 import org.grapple.schema.FieldFilterDefinition;
-import org.grapple.schema.QueryResolverFactory;
 import org.grapple.schema.impl.EntitySchemaProvider;
 import org.grapple.schema.instrumentation.DebugInstrumentation;
 import org.grapple.schema.instrumentation.DebugInstrumentationCallback;
@@ -67,13 +59,26 @@ public class Launch {
     }
 
 
+
+    private static EntityManagerFactory entityManagerFactory;
+
+    public static void runTest(GrappleTestCallback testCallback) throws Exception {
+        requireNonNull(testCallback, "testCallback");
+        testCallback.execute(getEntityManager());
+    }
+
+    private static EntityManager getEntityManager() {
+        if (entityManagerFactory == null) {
+            Launch.entityManagerFactory = Persistence.createEntityManagerFactory("grapple-sandbox");
+        }
+        return entityManagerFactory.createEntityManager();
+    }
+
     public static void main(String[] args) throws Exception {
 
-        final EntityManagerFactory emf = Persistence.createEntityManagerFactory("grapple-sandbox");
-        final EntityManager entityManager = emf.createEntityManager();
-
-        System.getProperties().put("entityManager", entityManager);
-        System.getProperties().put("usersRoot", entityRoot(User.class));
+//
+//        System.getProperties().put("entityManager", entityManager);
+//        System.getProperties().put("usersRoot", entityRoot(User.class));
 
 
 //        System.exit(0);
@@ -130,21 +135,21 @@ public class Launch {
             }
         });
 
-        entitySchema.importQueries(new UserService(entityManager), new EntityQueryScannerCallback() {
-
-            public void entityNotFound(Method method, Class<?> entityClass) {
-                // Called when a query couldn't be loaded as matching entity not found
-            }
-
-            public boolean acceptQuery(Method method) {
-                // Called to accept or not the given method
-                return true;
-            }
-
-            public void configureQuery(Method method, EntityQueryDefinition<?> queryDefinition) {
-
-            }
-        });
+//        entitySchema.importQueries(new UserService(entityManager), new EntityQueryScannerCallback() {
+//
+//            public void entityNotFound(Method method, Class<?> entityClass) {
+//                // Called when a query couldn't be loaded as matching entity not found
+//            }
+//
+//            public boolean acceptQuery(Method method) {
+//                // Called to accept or not the given method
+//                return true;
+//            }
+//
+//            public void configureQuery(Method method, EntityQueryDefinition<?> queryDefinition) {
+//
+//            }
+//        });
 
         entitySchema.addEntity(User.class).addCustomFilter(new GenericLiteral<List<Set<Integer>>>() {}, filter -> {
             filter.setFieldName("apzTest");
@@ -162,31 +167,31 @@ public class Launch {
             });
         });
 
-        entitySchema.getEntity(User.class).addQuery(queryBuilder ->
-        {
-            queryBuilder.setQueryName("listAllUsers");
-            queryBuilder.setQueryType(EntityQueryType.LIST);
-            queryBuilder.setQueryResolver(QueryResolverFactory.defaultQueryResolver(emf, entityRoot(User.class)));
-            queryBuilder.addParameter(new GenericLiteral<Set<Integer>>() {}, parameterBuilder -> {
-                parameterBuilder.setName("companyIds");
-            });
-            queryBuilder.addParameter(new GenericLiteral<Set<Stack<Integer>>>() {}, parameterBuilder -> {
-                parameterBuilder.setName("companyIds2");
-                parameterBuilder.setRequired(true);
-            });
-        });
-
-        entitySchema.getEntity(User.class).addQuery(queryBuilder -> {
-            queryBuilder.setQueryName("getUserById");
-            queryBuilder.setQueryType(EntityQueryType.SCALAR_NULL_ALLOWED);
-            queryBuilder.setQueryResolver(QueryResolverFactory.defaultQueryResolver(emf, entityRoot(User.class), (fetchSet, params) -> {
-                fetchSet.filter(Filters.isEqual(UserField.Id, (int) params.get("userId")));
-            } ));
-            queryBuilder.addParameter(classLiteral(Integer.class), parameterBuilder -> {
-                parameterBuilder.setName("userId");
-                parameterBuilder.setRequired(true);
-            });
-        });
+//        entitySchema.getEntity(User.class).addQuery(queryBuilder ->
+//        {
+//            queryBuilder.setQueryName("listAllUsers");
+//            queryBuilder.setQueryType(EntityQueryType.LIST);
+//            queryBuilder.setQueryResolver(QueryResolverFactory.defaultQueryResolver(emf, entityRoot(User.class)));
+//            queryBuilder.addParameter(new GenericLiteral<Set<Integer>>() {}, parameterBuilder -> {
+//                parameterBuilder.setName("companyIds");
+//            });
+//            queryBuilder.addParameter(new GenericLiteral<Set<Stack<Integer>>>() {}, parameterBuilder -> {
+//                parameterBuilder.setName("companyIds2");
+//                parameterBuilder.setRequired(true);
+//            });
+//        });
+//
+//        entitySchema.getEntity(User.class).addQuery(queryBuilder -> {
+//            queryBuilder.setQueryName("getUserById");
+//            queryBuilder.setQueryType(EntityQueryType.SCALAR_NULL_ALLOWED);
+//            queryBuilder.setQueryResolver(QueryResolverFactory.defaultQueryResolver(emf, entityRoot(User.class), (fetchSet, params) -> {
+//                fetchSet.filter(Filters.isEqual(UserField.Id, (int) params.get("userId")));
+//            } ));
+//            queryBuilder.addParameter(classLiteral(Integer.class), parameterBuilder -> {
+//                parameterBuilder.setName("userId");
+//                parameterBuilder.setRequired(true);
+//            });
+//        });
 
         System.out.println(entitySchema);
 
@@ -259,7 +264,7 @@ public class Launch {
         }
 
 
-        selectAllMessagesForX(entityManager);
+//        selectAllMessagesForX(entityManager);
         if (true) {
             return;
         }
@@ -274,33 +279,7 @@ public class Launch {
     }
 
 
-    private static void xx() {
 
-//        {
-//            final RootFetchSet<User> fetchSet = GrappleQuery.newQuery();
-//            fetchSet.select(UserField.Id);
-//            fetchSet.select(UserField.IS_GREATESST);
-//            fetchSet.select(UserField.DisplayName);
-//            fetchSet.join(UserField.Company, tblCompany -> tblCompany.select(CompanyField.ID));
-//            fetchSet.filter(Filters.isNotNull());
-//            fetchSet.orderBy(UserField.IS_GREATESST, SortDirection.ASC);
-//
-//            final QueryResultList<User> resultRows = fetchSet.execute(entityManager, entityRoot(User.class));
-//            List<Temp> results = resultRows.map(Temp::new, (row, model) -> {
-//                model.userId = row.get(UserField.Id);
-//
-//
-////                row.getJoin(UserField.Company).apply(tblCompany -> {
-////                    model.companyId = tblCompany.get(CompanyField.ID);
-////                });
-//
-//
-//
-//            });
-//
-//        }
-
-    }
 
     private static void schemaTest() {
 
@@ -380,52 +359,7 @@ public class Launch {
 
     }
 
-//    private static void PrettyPrint(List<QueryResultItem> results) {
-//        if (results.isEmpty()) {
-//            return;
-//        }
-//        StringBuffer x;
-//        final List<Map<String, Object>> allRows = new ArrayList<>();
-//        for (QueryResultItem result: results) {
-//            allRows.add(result.getValues());
-//        }
-//        final List<String> columnNames = new ArrayList<>(allRows.get(0).keySet());
-//        final Map<String, Integer> columnWidths = new HashMap<>();
-//        // Initialise with column widths
-//        for (String columnName: columnNames) {
-//            columnWidths.put(columnName, columnName.length());
-//        }
-//        // Now loop through all rows ...
-//        for (Map<String, Object> row: allRows) {
-//            for (String columnName: columnNames) {
-//                columnWidths.put(columnName, Math.max(columnWidths.get(columnName), String.valueOf(row.get(columnName)).length()));
-//            }
-//        }
-//        for (String columnName: columnNames) {
-//            System.out.print(String.format("| %s ", columnName));
-//            final int distanceToPad = columnWidths.get(columnName) - columnName.length();
-//            if (distanceToPad > 0) {
-//                System.out.print(new String(new char[distanceToPad]).replace("\0", " "));
-//            }
-//        }
-//        System.out.println("|");
-//        for (String columnName: columnNames) {
-//            final int distanceToPad = columnWidths.get(columnName) - columnName.length();
-//            System.out.print(new String(new char[columnName.length() + distanceToPad + 4]).replace("\0", "-"));
-//        }
-//        System.out.println();
-//        for (Map<String, Object> row: allRows) {
-//            for (String columnName: columnNames) {
-//                final String value = String.valueOf(row.get(columnName));
-//                System.out.print(String.format("| %s ", value));
-//                final int distanceToPad = columnWidths.get(columnName) - value.length();
-//                if (distanceToPad > 0) {
-//                    System.out.print(new String(new char[distanceToPad]).replace("\0", " "));
-//                }
-//            }
-//            System.out.println("|");
-//        }
-//    }
+
 
 
     private static void main() throws Exception {

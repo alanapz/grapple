@@ -18,6 +18,17 @@ public final class Utils {
 
     }
 
+    public static void markAsUsed(Object... values) {
+        // Nothing to do here..
+    }
+
+    public static <T> T requireNonNullArgument(T obj, String message) {
+        if (obj == null) {
+            throw new IllegalArgumentException(message);
+        }
+        return obj;
+    }
+
     @SafeVarargs
     @SuppressWarnings("varargs")
     public static <T> Set<T> toSet(T... values) {

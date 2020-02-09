@@ -1,5 +1,17 @@
 package org.grapple.core;
 
-public final class MetadataKey<T> {
+import static java.util.Objects.requireNonNull;
 
+public class MetadataKey<M> {
+
+    private final String name;
+
+    public MetadataKey(String name) {
+        this.name = requireNonNull(name, "name");
+    }
+
+    @Override
+    public String toString() {
+        return name;
+    }
 }

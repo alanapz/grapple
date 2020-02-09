@@ -4,6 +4,8 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.query.EntityResultType.entityResultType;
 import static org.grapple.utils.Utils.coalesce;
+import static org.grapple.utils.Utils.markAsUsed;
+import static org.grapple.utils.Utils.requireNonNullArgument;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -15,9 +17,10 @@ import javax.persistence.criteria.Join;
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Path;
 import javax.persistence.metamodel.SingularAttribute;
+import org.grapple.core.Chainable;
 import org.grapple.core.MetadataKey;
-import org.grapple.utils.Chainable;
 import org.grapple.utils.LazyValue;
+import org.grapple.utils.MetadataValues;
 import org.grapple.utils.Utils;
 
 public final class EntityFieldBuilder {
@@ -29,8 +32,8 @@ public final class EntityFieldBuilder {
     public static <X, T> QueryField<X, T> literalField(Consumer<LiteralFieldBuilder<X, T>> fieldBuilder) {
         requireNonNull(fieldBuilder, "fieldBuilder");
         final LiteralFieldBuilder<X, T> builder = new LiteralFieldBuilder<X, T>().apply(fieldBuilder);
-        final String name = requireNonNull(builder.name, "name required");
-        final Class<T> resultType = requireNonNull(builder.resultType, "result type required");
+        final String name = requireNonNullArgument(builder.name, "name required");
+        final Class<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
         final T value = builder.value;
         return new QueryField<X, T>() {
 
@@ -60,7 +63,7 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
+            public <M> M getMetadata(MetadataKey<M> metadataKey) {
                 return null;
             }
         };
@@ -75,8 +78,9 @@ public final class EntityFieldBuilder {
         final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(fieldBuilder);
         final String name = coalesce(builder.name, attribute.getName());
         final EntityResultType<T> resultType = entityResultType(attribute.getJavaType(), coalesce(builder.nullAllowed, attribute.isOptional()));
-        final String description = coalesce(builder.description, QueryUtils.getDefaultDescription(attribute));
-        final String deprecationReason = coalesce(builder.deprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
+        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
+        metadata.putDefault(EntityMetadataKeys.Description, QueryUtils.getDefaultDescription(attribute));
+        metadata.putDefault(EntityMetadataKeys.DeprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
         return new QueryField<X, T>() {
 
             @Override
@@ -96,6 +100,7 @@ public final class EntityFieldBuilder {
             @Override
             public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
                 final Path<T> attributePath = ctx.addSelection(getExpression(ctx, queryBuilder));
+                markAsUsed(attributePath);
                 return tuple -> tuple.get(attributePath);
             }
 
@@ -110,17 +115,8 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.Visibility) {
-                    return builder.visibility;
-                }
-                if (metadataKey == EntityMetadataKeys.Description) {
-                    return description;
-                }
-                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
-                    return deprecationReason;
-                }
-                return null;
+            public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                return metadata.get(metadataKey);
             }
 
             @Override
@@ -133,10 +129,11 @@ public final class EntityFieldBuilder {
     public static <X, T> QueryField<X, T> expressionField(Consumer<ExpressionFieldBuilder<X, T>> fieldBuilder) {
         requireNonNull(fieldBuilder, "fieldBuilder");
         final ExpressionFieldBuilder<X, T> builder = new ExpressionFieldBuilder<X, T>().apply(fieldBuilder);
-        final String name = requireNonNull(builder.name, "name required");
-        final EntityResultType<T> resultType = requireNonNull(builder.resultType, "result type required");
-        final ExpressionResolver<X, T> expression = requireNonNull(builder.expression, "expression required");
+        final String name = requireNonNullArgument(builder.name, "name required");
+        final EntityResultType<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
+        final ExpressionResolver<X, T> expression = requireNonNullArgument(builder.expression, "expression required");
         final ExpressionOrderByResolver<X> orderBy = coalesce(builder.orderBy, expression::get);
+        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
         return new QueryField<X, T>() {
 
             @Override
@@ -151,8 +148,8 @@ public final class EntityFieldBuilder {
 
             @Override
             public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                final Expression<T> expression = getExpression(ctx, queryBuilder);
-                ctx.addSelection(expression);
+                final Expression<T> expression = ctx.addSelection(getExpression(ctx, queryBuilder));
+                markAsUsed(expression); // Do not remove
                 return tuple -> tuple.get(expression);
             }
 
@@ -167,17 +164,8 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.Visibility) {
-                    return builder.visibility;
-                }
-                if (metadataKey == EntityMetadataKeys.Description) {
-                    return builder.description;
-                }
-                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
-                    return builder.deprecationReason;
-                }
-                return null;
+            public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                return metadata.get(metadataKey);
             }
 
             @Override
@@ -187,20 +175,14 @@ public final class EntityFieldBuilder {
         };
     }
 
-    public static <X, T> EntityField<X, T> selectionField(String name, EntityResultType<T> resultType, SelectionResultSupplier<X, T> supplier) {
-        return selectionField(fieldBuilder -> fieldBuilder
-                .name(name)
-                .resultType(resultType)
-                .resolver(supplier));
-    }
-
-    public static <X, T> EntityField<X, T> selectionField(Consumer<SelectionFieldBuilder<X, T>> fieldBuilder) {
+    public static <X, T> NonQueryField<X, T> nonQueryField(Consumer<NonQueryFieldBuilder<X, T>> fieldBuilder) {
         requireNonNull(fieldBuilder, "fieldBuilder");
-        final SelectionFieldBuilder<X, T> builder = new SelectionFieldBuilder<X, T>().apply(fieldBuilder);
-        final String name = requireNonNull(builder.name, "name required");
-        final EntityResultType<T> resultType = requireNonNull(builder.resultType, "result type required");
-        final SelectionResultSupplier<X, T> resolver = requireNonNull(builder.resolver, "resolver required");
-        return new EntityField<X, T>() {
+        final NonQueryFieldBuilder<X, T> builder = new NonQueryFieldBuilder<X, T>().apply(fieldBuilder);
+        final String name = requireNonNullArgument(builder.name, "name required");
+        final EntityResultType<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
+        final NonQueryFieldResolver<X, T> resolver = requireNonNullArgument(builder.resolver, "resolver required");
+        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
+        return new NonQueryField<X, T>() {
 
             @Override
             public String getName() {
@@ -214,21 +196,17 @@ public final class EntityFieldBuilder {
 
             @Override
             public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                return resolver.get(ctx, queryBuilder);
+                return ctx.addNonQuerySelection(this)::get;
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.Visibility) {
-                    return builder.visibility;
-                }
-                if (metadataKey == EntityMetadataKeys.Description) {
-                    return builder.description;
-                }
-                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
-                    return builder.deprecationReason;
-                }
-                return null;
+            public NonQueryFieldResolver<X, T> getResolver() {
+                return resolver;
+            }
+
+            @Override
+            public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                return metadata.get(metadataKey);
             }
 
             @Override
@@ -247,8 +225,9 @@ public final class EntityFieldBuilder {
         final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(joinBuilder);
         final String name = coalesce(builder.name, attribute.getName());
         final boolean nullAllowed = coalesce(builder.nullAllowed, attribute.isOptional());
-        final String description = coalesce(builder.description, QueryUtils.getDefaultDescription(attribute));
-        final String deprecationReason = coalesce(builder.deprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
+        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
+        metadata.putDefault(EntityMetadataKeys.Description, QueryUtils.getDefaultDescription(attribute));
+        metadata.putDefault(EntityMetadataKeys.DeprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
         return new EntityJoin<X, T>() {
 
             @Override
@@ -271,17 +250,8 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.Visibility) {
-                    return builder.visibility;
-                }
-                if (metadataKey == EntityMetadataKeys.Description) {
-                    return description;
-                }
-                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
-                    return deprecationReason;
-                }
-                return null;
+            public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                return metadata.get(metadataKey);
             }
 
             @Override
@@ -301,9 +271,10 @@ public final class EntityFieldBuilder {
     public static <X, Y> EntityJoin<X, Y> expressionJoin(Consumer<ExpressionJoinBuilder<X, Y>> joinBuilder) {
         requireNonNull(joinBuilder, "joinBuilder");
         final ExpressionJoinBuilder<X, Y> builder = new ExpressionJoinBuilder<X, Y>().apply(joinBuilder);
-        final String name = requireNonNull(builder.name, "name required");
-        final EntityResultType<Y> resultType = requireNonNull(builder.resultType, "result type required");
-        final JoinSupplier<X, Y> supplier  = requireNonNull(builder.expression, "expression required");
+        final String name = requireNonNullArgument(builder.name, "name required");
+        final EntityResultType<Y> resultType = requireNonNullArgument(builder.resultType, "result type required");
+        final JoinSupplier<X, Y> supplier  = requireNonNullArgument(builder.expression, "expression required");
+        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
         return new EntityJoin<X, Y>() {
 
             @Override
@@ -322,17 +293,8 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.Visibility) {
-                    return builder.visibility;
-                }
-                if (metadataKey == EntityMetadataKeys.Description) {
-                    return builder.description;
-                }
-                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
-                    return builder.deprecationReason;
-                }
-                return null;
+            public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                return metadata.get(metadataKey);
             }
 
             @Override
@@ -385,11 +347,7 @@ public final class EntityFieldBuilder {
 
         Boolean nullAllowed;
 
-        EntitySchemaVisibility visibility;
-
-        String description;
-
-        String deprecationReason;
+        final MetadataValues metadata = new MetadataValues();
 
         public AttributeFieldBuilder<X, T> name(String name) {
             this.name = name;
@@ -401,27 +359,14 @@ public final class EntityFieldBuilder {
             return this;
         }
 
-        public AttributeFieldBuilder<X, T> visibility(EntitySchemaVisibility visibility) {
-            this.visibility = visibility;
-            return this;
-        }
-
-        public AttributeFieldBuilder<X, T> description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public AttributeFieldBuilder<X, T> deprecationReason(String deprecationReason) {
-            this.deprecationReason = deprecationReason;
+        public <Z> AttributeFieldBuilder<X, T> metadata(MetadataKey<Z> metadataKey, Z value) {
+            metadata.put(metadataKey, value);
             return this;
         }
 
         @Override
         public AttributeFieldBuilder<X, T> apply(Consumer<AttributeFieldBuilder<X, T>> consumer) {
-            if (consumer != null) {
-                consumer.accept(this);
-            }
-            return this;
+            return Utils.apply(this, consumer);
         }
 
         @Override
@@ -443,12 +388,6 @@ public final class EntityFieldBuilder {
     }
 
     @FunctionalInterface
-    public interface SelectionResultSupplier<X, T> {
-
-        Function<Tuple, T> get(EntityContext<X> ctx, QueryBuilder queryBuilder);
-    }
-
-    @FunctionalInterface
     public interface JoinSupplier<X, Y> {
 
         Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder queryBuilder);
@@ -460,15 +399,11 @@ public final class EntityFieldBuilder {
 
         EntityResultType<T> resultType;
 
-        EntitySchemaVisibility visibility;
-
         ExpressionResolver<X, T> expression;
 
         ExpressionOrderByResolver<X> orderBy;
 
-        String description;
-
-        String deprecationReason;
+        final MetadataValues metadata = new MetadataValues();
 
         public ExpressionFieldBuilder<X, T> name(String name) {
             this.name = name;
@@ -477,11 +412,6 @@ public final class EntityFieldBuilder {
 
         public ExpressionFieldBuilder<X, T> resultType(EntityResultType<T> resultType) {
             this.resultType = resultType;
-            return this;
-        }
-
-        public ExpressionFieldBuilder<X, T> visibility(EntitySchemaVisibility visibility) {
-            this.visibility = visibility;
             return this;
         }
 
@@ -495,13 +425,8 @@ public final class EntityFieldBuilder {
             return this;
         }
 
-        public ExpressionFieldBuilder<X, T> description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public ExpressionFieldBuilder<X, T> deprecationReason(String deprecationReason) {
-            this.deprecationReason = deprecationReason;
+        public <Z> ExpressionFieldBuilder<X, T> metadata(MetadataKey<Z> key, Z value) {
+            metadata.put(key, value);
             return this;
         }
 
@@ -516,7 +441,7 @@ public final class EntityFieldBuilder {
         }
     }
 
-    public static final class SelectionFieldBuilder<X, T> implements Chainable<SelectionFieldBuilder<X, T>> {
+    public static final class NonQueryFieldBuilder<X, T> implements Chainable<NonQueryFieldBuilder<X, T>> {
 
         String name;
 
@@ -526,61 +451,47 @@ public final class EntityFieldBuilder {
 
         boolean nullAllowed;
 
-        EntitySchemaVisibility visibility;
+        NonQueryFieldResolver<X, T> resolver;
 
-        SelectionResultSupplier<X, T> resolver;
+        final MetadataValues metadata = new MetadataValues();
 
-        String description;
-
-        String deprecationReason;
-
-        public SelectionFieldBuilder<X, T> name(String name) {
+        public NonQueryFieldBuilder<X, T> name(String name) {
             this.name = name;
             return this;
         }
 
-        public SelectionFieldBuilder<X, T> entity(Class<X> entityType) {
+        public NonQueryFieldBuilder<X, T> entity(Class<X> entityType) {
             this.entityType = entityType;
             return this;
         }
 
-        public SelectionFieldBuilder<X, T> resultType(EntityResultType<T> resultType) {
+        public NonQueryFieldBuilder<X, T> resultType(EntityResultType<T> resultType) {
             this.resultType = resultType;
             return this;
         }
 
-        public SelectionFieldBuilder<X, T> nullAllowed(boolean nullAllowed) {
+        public NonQueryFieldBuilder<X, T> nullAllowed(boolean nullAllowed) {
             this.nullAllowed = nullAllowed;
             return this;
         }
 
-        public SelectionFieldBuilder<X, T> visibility(EntitySchemaVisibility visibility) {
-            this.visibility = visibility;
-            return this;
-        }
-
-        public SelectionFieldBuilder<X, T> resolver(SelectionResultSupplier<X, T> resolver) {
+        public NonQueryFieldBuilder<X, T> resolver(NonQueryFieldResolver<X, T> resolver) {
             this.resolver = resolver;
             return this;
         }
 
-        public SelectionFieldBuilder<X, T> description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public SelectionFieldBuilder<X, T> deprecationReason(String deprecationReason) {
-            this.deprecationReason = deprecationReason;
+        public <Z> NonQueryFieldBuilder<X, T> metadata(MetadataKey<Z> key, Z value) {
+            metadata.put(key, value);
             return this;
         }
 
         @Override
-        public SelectionFieldBuilder<X, T> apply(Consumer<SelectionFieldBuilder<X, T>> consumer) {
+        public NonQueryFieldBuilder<X, T> apply(Consumer<NonQueryFieldBuilder<X, T>> consumer) {
             return Utils.apply(this, consumer);
         }
 
         @Override
-        public <Z> Z invoke(Function<SelectionFieldBuilder<X, T>, Z> function) {
+        public <Z> Z invoke(Function<NonQueryFieldBuilder<X, T>, Z> function) {
             return requireNonNull(function, "function").apply(this);
         }
     }
@@ -591,13 +502,9 @@ public final class EntityFieldBuilder {
 
         EntityResultType<Y> resultType;
 
-        EntitySchemaVisibility visibility;
-
         JoinSupplier<X, Y> expression;
 
-        String description;
-
-        String deprecationReason;
+        final MetadataValues metadata = new MetadataValues();
 
         public ExpressionJoinBuilder<X, Y> name(String name) {
             this.name = name;
@@ -609,23 +516,13 @@ public final class EntityFieldBuilder {
             return this;
         }
 
-        public ExpressionJoinBuilder<X, Y> visibility(EntitySchemaVisibility visibility) {
-            this.visibility = visibility;
-            return this;
-        }
-
         public ExpressionJoinBuilder<X, Y> expression(JoinSupplier<X, Y> expression) {
             this.expression = expression;
             return this;
         }
 
-        public ExpressionJoinBuilder<X, Y> description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public ExpressionJoinBuilder<X, Y> deprecationReason(String deprecationReason) {
-            this.deprecationReason = deprecationReason;
+        public <Z> ExpressionJoinBuilder<X, Y> metadata(MetadataKey<Z> key, Z value) {
+            metadata.put(key, value);
             return this;
         }
 

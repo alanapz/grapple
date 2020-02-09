@@ -1,6 +1,6 @@
 package org.grapple.schema;
 
-import org.grapple.utils.Chainable;
+import org.grapple.core.Chainable;
 
 public interface EntityOrderByDefinition<X> extends Chainable<EntityOrderByDefinition<X>> {
 

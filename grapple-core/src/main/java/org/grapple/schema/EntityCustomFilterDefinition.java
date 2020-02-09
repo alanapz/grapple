@@ -1,8 +1,8 @@
 package org.grapple.schema;
 
 import graphql.schema.GraphQLInputType;
+import org.grapple.core.Chainable;
 import org.grapple.reflect.TypeLiteral;
-import org.grapple.utils.Chainable;
 
 public interface EntityCustomFilterDefinition<X, T> extends Chainable<EntityCustomFilterDefinition<X, T>> {
 

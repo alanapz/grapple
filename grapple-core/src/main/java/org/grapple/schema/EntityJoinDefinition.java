@@ -1,7 +1,7 @@
 package org.grapple.schema;
 
+import org.grapple.core.Chainable;
 import org.grapple.query.EntityJoin;
-import org.grapple.utils.Chainable;
 
 public interface EntityJoinDefinition<X, Y> extends Chainable<EntityJoinDefinition<X, Y>> {
 

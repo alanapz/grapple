@@ -39,8 +39,10 @@ import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.idl.SchemaPrinter;
+import org.grapple.query.EntityContext;
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityJoin;
+import org.grapple.query.EntityMetadataKeys;
 import org.grapple.query.EntityResultType;
 import org.grapple.query.QueryDefinitions;
 import org.grapple.reflect.ClassLiteral;
@@ -206,12 +208,18 @@ final class EntitySchemaImpl implements EntitySchema {
                 scannerCallback.configureEntity(entity);
                 if (value instanceof EntityField<?, ?>) {
                     final EntityField<?, ?> entityField = (EntityField<?, ?>) value;
+                    if (Boolean.TRUE.equals(entityField.getMetadata(EntityMetadataKeys.SkipImport))) {
+                        return;
+                    }
                     if (scannerCallback.acceptField(uncheckedCast(entity), entityField)) {
                         entity.addField(uncheckedCast(entityField)).apply(scannerCallback::configureField);
                     }
                 }
                 if (value instanceof EntityJoin<?, ?>) {
                     final EntityJoin<?, ?> entityJoin = (EntityJoin<?, ?>) value;
+                    if (Boolean.TRUE.equals(entityJoin.getMetadata(EntityMetadataKeys.SkipImport))) {
+                        return;
+                    }
                     if (scannerCallback.acceptJoin(uncheckedCast(entity), entityJoin)) {
                         entity.addJoin(uncheckedCast(entityJoin)).apply(scannerCallback::configureJoin);
                     }

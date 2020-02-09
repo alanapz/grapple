@@ -1,8 +1,8 @@
 package org.grapple.schema;
 
+import org.grapple.core.Chainable;
 import org.grapple.query.EntityField;
 import org.grapple.query.QueryField;
-import org.grapple.utils.Chainable;
 
 public interface EntityFieldDefinition<X, T> extends Chainable<EntityFieldDefinition<X, T>> {
 

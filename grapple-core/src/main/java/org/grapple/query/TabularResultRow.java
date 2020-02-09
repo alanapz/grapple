@@ -1,7 +1,7 @@
 package org.grapple.query;
 
 import java.util.Map;
-import org.grapple.utils.Chainable;
+import org.grapple.core.Chainable;
 
 public interface TabularResultRow extends Chainable<TabularResultRow> {
 

@@ -3,7 +3,7 @@ package org.grapple.query;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import org.grapple.utils.Chainable;
+import org.grapple.core.Chainable;
 import org.grapple.utils.EntitySortKey;
 
 public interface FetchSet<X> extends Chainable<FetchSet<X>> {

@@ -1,7 +1,7 @@
 package org.grapple.schema;
 
+import org.grapple.core.Chainable;
 import org.grapple.reflect.TypeLiteral;
-import org.grapple.utils.Chainable;
 
 public interface EntityQueryDefinitionParameter<T> extends Chainable<EntityQueryDefinitionParameter<T>> {
 

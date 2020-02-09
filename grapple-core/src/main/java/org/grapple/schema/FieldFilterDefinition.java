@@ -1,9 +1,9 @@
 package org.grapple.schema;
 
 import java.util.Map;
+import org.grapple.core.Chainable;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.impl.SimpleFieldFilterItem;
-import org.grapple.utils.Chainable;
 
 public interface FieldFilterDefinition<T> extends Chainable<FieldFilterDefinition<T>> {
 

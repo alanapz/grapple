@@ -2,9 +2,9 @@ package org.grapple.schema;
 
 import java.util.Set;
 import java.util.function.Consumer;
+import org.grapple.core.Chainable;
 import org.grapple.core.Validatable;
 import org.grapple.reflect.TypeLiteral;
-import org.grapple.utils.Chainable;
 
 public interface EntityQueryDefinition<X> extends Chainable<EntityQueryDefinition<X>>, Validatable {
 

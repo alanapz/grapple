@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import javax.persistence.Tuple;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.From;
@@ -22,6 +21,7 @@ import javax.persistence.metamodel.SingularAttribute;
 import org.grapple.query.EntityContext;
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityJoin;
+import org.grapple.query.NonQueryField;
 import org.grapple.query.NonQuerySelection;
 import org.grapple.query.QueryBuilder;
 import org.grapple.query.QueryField;
@@ -116,6 +116,7 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
+    @Deprecated
     public <Y> AttributeJoin<Y> joinUnshared(SingularAttribute<X, Y> attribute) {
         requireNonNull(attribute, "attribute");
         return new AttributeJoinImpl<>(LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)));
@@ -151,15 +152,16 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    public <T> NonQuerySelection<X, T> addNonQuerySelection(EntityField<X, T> entityField) {
-        requireNonNull(entityField, "entityField");
-        final @SuppressWarnings("unchecked") NonQuerySelection<X, T> existing = (NonQuerySelection<X, T>) nonQuerySelections.get(entityField);
+    public <T> NonQuerySelection<X, T> addNonQuerySelection(NonQueryField<X, T> nonQueryField) {
+        requireNonNull(nonQueryField, "nonQueryField");
+        final @SuppressWarnings("unchecked") NonQuerySelection<X, T> existing = (NonQuerySelection<X, T>) nonQuerySelections.get(nonQueryField);
         if (existing != null) {
             return existing;
         }
-        final Function<Tuple, T> resultHandler = entityField.prepare(this, queryBuilder); // Note - must be outside of get() - Do not move inside DeferredSelection !
-        final NonQuerySelection<X, T> nonQuerySelection = resultHandler::apply;
-        nonQuerySelections.put(entityField, nonQuerySelection);
+        // ATTENTION: boundResolver must be completely initialised here- do not "optimise" following line
+        // Make sure the get() happens outside lambda
+        final NonQuerySelection<X, T> nonQuerySelection = nonQueryField.getResolver().get(AbstractEntityContextImpl.this, queryBuilder)::apply;
+        nonQuerySelections.put(nonQueryField, nonQuerySelection);
         return nonQuerySelection;
     }
 
