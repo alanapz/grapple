@@ -39,6 +39,12 @@
         <maven.test.skip>true</maven.test.skip>
         <maven.javadoc.skip>true</maven.javadoc.skip>
         <reflections.version>0.9.12</reflections.version>
+        <sonar.host.url>https://sonar.ci.object23.it/</sonar.host.url>
+        <sonar.login>c364696d1a3bda7f14ee156d8a9ae45adb776a05</sonar.login>
+        <sonar.projectKey>https://sonar.ci.object23.it/</sonar.projectKey>
+        <sonar.projectName>Java Grapple</sonar.projectName>
+        <sonar.sources>src/main/java</sonar.sources>
+        <sonar.java.binaries>target/classes</sonar.java.binaries>
     </properties>
     <url>https://github.com/alanapz/grapple</url>
     <developers>

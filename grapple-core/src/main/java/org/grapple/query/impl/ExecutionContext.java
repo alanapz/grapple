@@ -3,7 +3,6 @@ package org.grapple.query.impl;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
-import static org.grapple.utils.Utils.uncheckedCast;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -115,7 +114,8 @@ final class ExecutionContext {
         return processEntityContext(query, rootFetchSet, new EntityContextImpl<>(rootFetchSet, query, queryBuilder, LazyValue.fixed(entity)), fetchSelections);
     }
 
-    private <X> EntityContext<X> processEntityContext(QueryWrapper query, FetchSet<X> fetchSet, AbstractEntityContextImpl<X> entityContext, boolean fetchSelections) {
+    // Q1 and Q2 are virtual type parameters used for type-safety whilst looping over fields
+    private <X, Q1, Q2> EntityContext<X> processEntityContext(QueryWrapper query, FetchSet<X> fetchSet, AbstractEntityContextImpl<X> entityContext, boolean fetchSelections) {
         // Only add selections if we are in fetch mode (not count query for example)
         if (fetchSelections) {
             fetchSets.put(fetchSet, entityContext);
@@ -127,9 +127,10 @@ final class ExecutionContext {
                 fieldCallbacks.add(new EntityExistsResultCallback<>(fetchSet, entityContext));
             }
 
-            for (EntityField<X, ?> field: fetchSet.getSelections()) {
-                final Function<Tuple, ?> resultHandler = field.prepare(entityContext, queryBuilder);
-                fieldCallbacks.add(new SelectionResultCallback<>(fetchSet, uncheckedCast(field), uncheckedCast(resultHandler))); // Can't do much better...
+            for (EntityField<X, ?> rawField: fetchSet.getSelections()) {
+                final @SuppressWarnings("unchecked") EntityField<X, Q1> field = (EntityField<X, Q1>) rawField;
+                final Function<Tuple, Q1> resultHandler = field.prepare(entityContext, queryBuilder);
+                fieldCallbacks.add(new ExecutionContext.SelectionResultCallback<>(fetchSet, field, resultHandler));
             }
         }
 
@@ -138,10 +139,11 @@ final class ExecutionContext {
         }
 
         for (Map.Entry<EntityJoin<X, ?>, FetchSet<?>> joinEntry: fetchSet.getJoins().entrySet()) {
-            final FetchSet<?> joinedFetchSet = joinEntry.getValue();
+            final @SuppressWarnings("unchecked") EntityJoin<X, Q2> entityJoin = (EntityJoin<X, Q2>) joinEntry.getKey();
+            final @SuppressWarnings("unchecked") FetchSet<Q2> joinedFetchSet = (FetchSet<Q2>) joinEntry.getValue();
             if (!QueryImplUtils.isEmptyFetchSet(joinedFetchSet)) { // Only join with non-empty
-                final EntityContext<?> childEntityContext = entityContext.join(joinEntry.getKey());
-                processEntityContext(query, uncheckedCast(joinedFetchSet), uncheckedCast(childEntityContext), fetchSelections); // NOSONAR nor here...
+                final JoinedEntityContextImpl<Q2> childEntityContext = entityContext.join(entityJoin);
+                processEntityContext(query, joinedFetchSet, childEntityContext, fetchSelections);
             }
         }
         return entityContext;

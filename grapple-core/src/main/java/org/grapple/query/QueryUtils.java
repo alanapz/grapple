@@ -20,8 +20,15 @@ final class QueryUtils {
         return null;
     }
 
-    static boolean isDefaultDeprecated(SingularAttribute<?, ?> attribute) {
+    static String getDefaultDeprecationReason(SingularAttribute<?, ?> attribute) {
         requireNonNull(attribute, "attribute");
-        return (attribute.getJavaMember() instanceof AnnotatedElement) && ((AnnotatedElement) attribute.getJavaMember()).getDeclaredAnnotation(Deprecated.class) != null;
+        if (!(attribute.getJavaMember() instanceof AnnotatedElement)) {
+            return null;
+        }
+        final Deprecated deprecated = ((AnnotatedElement) attribute.getJavaMember()).getAnnotation(Deprecated.class);
+        if (deprecated == null) {
+            return null;
+        }
+        return "Deprecated";
     }
 }

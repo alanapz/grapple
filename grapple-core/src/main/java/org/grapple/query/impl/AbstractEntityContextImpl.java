@@ -1,26 +1,28 @@
 package org.grapple.query.impl;
 
 import static java.util.Objects.requireNonNull;
-import static org.grapple.utils.Utils.uncheckedCast;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import javax.persistence.Tuple;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.From;
 import javax.persistence.criteria.Join;
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Path;
+import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Selection;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.SetAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import org.grapple.query.EntityContext;
+import org.grapple.query.EntityField;
 import org.grapple.query.EntityJoin;
-import org.grapple.query.JoinedEntityContext;
+import org.grapple.query.NonQuerySelection;
 import org.grapple.query.QueryBuilder;
 import org.grapple.query.QueryField;
 import org.grapple.query.QueryParameter;
@@ -37,13 +39,15 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
 
     private final Supplier<? extends From<?, X>> entity;
 
-    private final Map<QueryField<?, ?>, Expression<?>> selections = new NoDuplicatesMap<>();
+    private final Map<QueryField<X, ?>, Expression<?>> selections = new NoDuplicatesMap<>();
 
-    private final Map<EntityJoin<?, ?>, JoinedEntityContextImpl<?>> entityJoins = new NoDuplicatesMap<>();
+    private final Map<EntityJoin<X, ?>, JoinedEntityContextImpl<?>> entityJoins = new NoDuplicatesMap<>();
 
-    private final Map<Attribute<?, ?>, JoinedEntityContextImpl<?>> attributeJoins = new NoDuplicatesMap<>();
+    private final Map<Attribute<X, ?>, JoinedEntityContextImpl<?>> attributeJoins = new NoDuplicatesMap<>();
 
-    private final Map<Attribute<?, ?>, AttributeJoin<?>> sharedJoins = new NoDuplicatesMap<>();
+    private final Map<Attribute<X, ?>, AttributeJoinImpl<?>> sharedJoins = new NoDuplicatesMap<>();
+
+    private final Map<EntityField<X, ?>, NonQuerySelection<X, ?>> nonQuerySelections = new NoDuplicatesMap<>();
 
     AbstractEntityContextImpl(RootFetchSetImpl<?> rootFetchSet, QueryWrapper queryWrapper, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity) {
         this.rootFetchSet = requireNonNull(rootFetchSet, "rootFetchSet");
@@ -64,10 +68,9 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <T> Expression<T> get(QueryField<X, T> selection) {
         requireNonNull(selection, "selection");
-        final Expression<T> existing = (Expression<T>) selections.get(selection);
+        final @SuppressWarnings("unchecked") Expression<T> existing = (Expression<T>) selections.get(selection);
         if (existing != null) {
             return existing;
         }
@@ -77,11 +80,11 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public <Y> JoinedEntityContext<Y> join(EntityJoin<X, Y> join) {
+    public <Y> JoinedEntityContextImpl<Y> join(EntityJoin<X, Y> join) {
         requireNonNull(join, "join");
-        if (entityJoins.containsKey(join)) {
-            return (JoinedEntityContextImpl<Y>) entityJoins.get(join);
+        final @SuppressWarnings("unchecked") JoinedEntityContextImpl<Y> existing = (JoinedEntityContextImpl<Y>) entityJoins.get(join);
+        if (existing != null) {
+            return existing;
         }
         final JoinedEntityContextImpl<Y> joinedContext = new JoinedEntityContextImpl<>(rootFetchSet, queryWrapper, queryBuilder, join.join(this, queryBuilder, entity));
         entityJoins.put(join, joinedContext);
@@ -89,11 +92,11 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public <Y> JoinedEntityContext<Y> join(SingularAttribute<X, Y> attribute) {
+    public <Y> JoinedEntityContextImpl<Y> join(SingularAttribute<X, Y> attribute) {
         requireNonNull(attribute, "attribute");
-        if (attributeJoins.containsKey(attribute)) {
-            return (JoinedEntityContextImpl<Y>) attributeJoins.get(attribute);
+        final @SuppressWarnings("unchecked") JoinedEntityContextImpl<Y> existing = (JoinedEntityContextImpl<Y>) attributeJoins.get(attribute);
+        if (existing != null) {
+            return existing;
         }
         final JoinedEntityContextImpl<Y> joinedContext = new JoinedEntityContextImpl<>(rootFetchSet, queryWrapper, queryBuilder, LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)));
         attributeJoins.put(attribute, joinedContext);
@@ -101,13 +104,13 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public <Y> AttributeJoin<Y> joinShared(SingularAttribute<X, Y> attribute) {
+    public <Y> AttributeJoinImpl<Y> joinShared(SingularAttribute<X, Y> attribute) {
         requireNonNull(attribute, "attribute");
-        if (sharedJoins.containsKey(attribute)) {
-            return (AttributeJoin<Y>) sharedJoins.get(attribute);
+        final @SuppressWarnings("unchecked") AttributeJoinImpl<Y> existing = (AttributeJoinImpl<Y>) sharedJoins.get(attribute);
+        if (existing != null) {
+            return existing;
         }
-        final AttributeJoin<Y> attributeJoin = new AttributeJoinImpl<>(LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)));
+        final AttributeJoinImpl<Y> attributeJoin = new AttributeJoinImpl<>(LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)));
         sharedJoins.put(attribute, attributeJoin);
         return attributeJoin;
     }
@@ -119,13 +122,23 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    public <Y> AttributeJoin<Y> joinUnshared(SetAttribute<X, Y> attribute, Consumer<Join<X, Y>> consumer) {
+    public <Y> AttributeJoin<Y> joinUnshared(SingularAttribute<X, Y> attribute, Function<Join<X, Y>, Predicate> joinBuilder) {
         requireNonNull(attribute, "attribute");
+        requireNonNull(joinBuilder, "joinBuilder");
         return new AttributeJoinImpl<>(LazyValue.of(() -> {
             final Join<X, Y> join = entity.get().join(attribute, JoinType.LEFT);
-            if (consumer != null) {
-                consumer.accept(join);
-            }
+            join.on(joinBuilder.apply(join));
+            return join;
+        }));
+    }
+
+    @Override
+    public <Y> AttributeJoin<Y> joinUnshared(SetAttribute<X, Y> attribute, Function<Join<X, Y>, Predicate> joinBuilder) {
+        requireNonNull(attribute, "attribute");
+        requireNonNull(joinBuilder, "joinBuilder");
+        return new AttributeJoinImpl<>(LazyValue.of(() -> {
+            final Join<X, Y> join = entity.get().join(attribute, JoinType.LEFT);
+            join.on(joinBuilder.apply(join));
             return join;
         }));
     }
@@ -135,6 +148,19 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
         requireNonNull(selection, "selection");
         queryWrapper.select(selection);
         return selection;
+    }
+
+    @Override
+    public <T> NonQuerySelection<X, T> addNonQuerySelection(EntityField<X, T> entityField) {
+        requireNonNull(entityField, "entityField");
+        final @SuppressWarnings("unchecked") NonQuerySelection<X, T> existing = (NonQuerySelection<X, T>) nonQuerySelections.get(entityField);
+        if (existing != null) {
+            return existing;
+        }
+        final Function<Tuple, T> resultHandler = entityField.prepare(this, queryBuilder); // Note - must be outside of get() - Do not move inside DeferredSelection !
+        final NonQuerySelection<X, T> nonQuerySelection = resultHandler::apply;
+        nonQuerySelections.put(entityField, nonQuerySelection);
+        return nonQuerySelection;
     }
 
     @Override
@@ -183,7 +209,13 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
         @Override
         public <Z> AttributeJoin<Z> join(SingularAttribute<Y, Z> attribute) {
             requireNonNull(attribute, "attribute");
-            return uncheckedCast(attributeJoins.computeIfAbsent(attribute, unused -> new AttributeJoinImpl<>(LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)))));
+            final @SuppressWarnings("unchecked") AttributeJoin<Z> existing = (AttributeJoin<Z>) attributeJoins.get(attribute);
+            if (existing != null) {
+                return existing;
+            }
+            final AttributeJoin<Z> attributeJoin = new AttributeJoinImpl<>(LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)));
+            attributeJoins.put(attribute, attributeJoin);
+            return attributeJoin;
         }
 
         @Override

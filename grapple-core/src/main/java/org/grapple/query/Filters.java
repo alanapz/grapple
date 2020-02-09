@@ -2,6 +2,7 @@ package org.grapple.query;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.jooq.lambda.Seq.of;
 import static org.jooq.lambda.Seq.seq;
 
 import java.util.ArrayList;
@@ -14,7 +15,6 @@ import java.util.function.Function;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.metamodel.SingularAttribute;
 import org.grapple.utils.QuickFilterBy;
-import org.jooq.lambda.Seq;
 
 public final class Filters {
 
@@ -52,7 +52,7 @@ public final class Filters {
 
             @Override
             public Predicate apply(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                return queryBuilder.alwaysTrue();
+                return queryBuilder.alwaysFalse();
             }
 
             @Override
@@ -315,6 +315,10 @@ public final class Filters {
     }
 
     public static <X, T> EntityFilter<X> contains(QueryField<X, T> selection, Set<T> values) {
+        return in(selection, values);
+    }
+
+    public static <X, T> EntityFilter<X> in(QueryField<X, T> selection, Set<T> values) {
         requireNonNull(selection, "selection");
         if (values == null) {
             return alwaysTrue();
@@ -334,7 +338,32 @@ public final class Filters {
 
             @Override
             public String toString() {
-                return format("%s IN (%s)", selection.getName(), Seq.of(values).toString(","));
+                return format("%s IN (%s)", selection.getName(), of(values).toString(","));
+            }
+        };
+    }
+
+    public static <X, T> EntityFilter<X> in(SingularAttribute<X, T> attribute, Set<T> values) {
+        requireNonNull(attribute, "attribute");
+        if (values == null) {
+            return alwaysTrue();
+        }
+        if (values.isEmpty()) {
+            return alwaysFalse();
+        }
+        if (values.size() == 1) {
+            return isEqual(attribute, values.iterator().next());
+        }
+        return new EntityFilter<X>() {
+
+            @Override
+            public Predicate apply(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+                return queryBuilder.in(ctx.get(attribute), values);
+            }
+
+            @Override
+            public String toString() {
+                return format("%s IN (%s)", attribute.getName(), of(values).toString(","));
             }
         };
     }

@@ -21,7 +21,7 @@ public final class EntityRootBuilder {
 
             @Override
             public EntityFilter<T> getFilter() {
-                return (EntityFilter<T>) alwaysTrue();
+                return alwaysTrue();
             }
 
             @Override

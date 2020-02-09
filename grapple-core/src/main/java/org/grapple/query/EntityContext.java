@@ -1,12 +1,14 @@
 package org.grapple.query;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.From;
 import javax.persistence.criteria.Join;
 import javax.persistence.criteria.Path;
+import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Selection;
 import javax.persistence.metamodel.SetAttribute;
 import javax.persistence.metamodel.SingularAttribute;
@@ -26,11 +28,16 @@ public interface EntityContext<X> extends Chainable<EntityContext<X>> {
 
     <Y> AttributeJoin<Y> joinShared(SingularAttribute<X, Y> attribute);
 
+    @Deprecated
     <Y> AttributeJoin<Y> joinUnshared(SingularAttribute<X, Y> attribute);
 
-    <Y> AttributeJoin<Y> joinUnshared(SetAttribute<X, Y> attribute, Consumer<Join<X, Y>> consumer);
+    <Y> AttributeJoin<Y> joinUnshared(SingularAttribute<X, Y> attribute, Function<Join<X, Y>, Predicate> joinBuilder);
+
+    <Y> AttributeJoin<Y> joinUnshared(SetAttribute<X, Y> attribute, Function<Join<X, Y>, Predicate> joinBuilder);
 
     <T extends Selection<?>> T addSelection(T selection);
+
+    <T> NonQuerySelection<X, T> addNonQuerySelection(EntityField<X, T> selection);
 
     CriteriaQuery<?> getQuery();
 

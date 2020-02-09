@@ -1,5 +1,5 @@
 package org.grapple.core;
 
-public class MetadataKey<T> {
+public final class MetadataKey<T> {
 
 }

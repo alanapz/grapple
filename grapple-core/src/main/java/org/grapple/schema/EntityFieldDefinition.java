@@ -16,9 +16,11 @@ public interface EntityFieldDefinition<X, T> extends Chainable<EntityFieldDefini
 
     void setFieldName(String fieldName);
 
+    String getDescription();
+
     void setDescription(String description);
 
-    void setIsDeprecated(boolean deprecated);
+    String getDeprecationReason();
 
     void setDeprecationReason(String deprecationReason);
 }

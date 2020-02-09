@@ -15,9 +15,11 @@ public interface EntityJoinDefinition<X, Y> extends Chainable<EntityJoinDefiniti
 
     void setFieldName(String fieldName);
 
+    String getDescription();
+
     void setDescription(String description);
 
-    void setIsDeprecated(boolean deprecated);
+    String getDeprecationReason();
 
     void setDeprecationReason(String deprecationReason);
 

@@ -18,6 +18,7 @@ import javax.persistence.metamodel.SingularAttribute;
 import org.grapple.core.MetadataKey;
 import org.grapple.utils.Chainable;
 import org.grapple.utils.LazyValue;
+import org.grapple.utils.Utils;
 
 public final class EntityFieldBuilder {
 
@@ -75,7 +76,7 @@ public final class EntityFieldBuilder {
         final String name = coalesce(builder.name, attribute.getName());
         final EntityResultType<T> resultType = entityResultType(attribute.getJavaType(), coalesce(builder.nullAllowed, attribute.isOptional()));
         final String description = coalesce(builder.description, QueryUtils.getDefaultDescription(attribute));
-        final boolean deprecated = coalesce(builder.deprecated, QueryUtils.isDefaultDeprecated(attribute));
+        final String deprecationReason = coalesce(builder.deprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
         return new QueryField<X, T>() {
 
             @Override
@@ -110,11 +111,14 @@ public final class EntityFieldBuilder {
 
             @Override
             public Object getMetadataValue(MetadataKey<?> metadataKey) {
+                if (metadataKey == EntityMetadataKeys.Visibility) {
+                    return builder.visibility;
+                }
                 if (metadataKey == EntityMetadataKeys.Description) {
                     return description;
                 }
-                if (metadataKey == EntityMetadataKeys.IsDeprecated) {
-                    return deprecated;
+                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
+                    return deprecationReason;
                 }
                 return null;
             }
@@ -133,8 +137,6 @@ public final class EntityFieldBuilder {
         final EntityResultType<T> resultType = requireNonNull(builder.resultType, "result type required");
         final ExpressionResolver<X, T> expression = requireNonNull(builder.expression, "expression required");
         final ExpressionOrderByResolver<X> orderBy = coalesce(builder.orderBy, expression::get);
-        final String description = builder.description;
-        final boolean deprecated = coalesce(builder.deprecated, false);
         return new QueryField<X, T>() {
 
             @Override
@@ -166,11 +168,14 @@ public final class EntityFieldBuilder {
 
             @Override
             public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.Description) {
-                    return description;
+                if (metadataKey == EntityMetadataKeys.Visibility) {
+                    return builder.visibility;
                 }
-                if (metadataKey == EntityMetadataKeys.IsDeprecated) {
-                    return deprecated;
+                if (metadataKey == EntityMetadataKeys.Description) {
+                    return builder.description;
+                }
+                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
+                    return builder.deprecationReason;
                 }
                 return null;
             }
@@ -195,8 +200,6 @@ public final class EntityFieldBuilder {
         final String name = requireNonNull(builder.name, "name required");
         final EntityResultType<T> resultType = requireNonNull(builder.resultType, "result type required");
         final SelectionResultSupplier<X, T> resolver = requireNonNull(builder.resolver, "resolver required");
-        final String description = builder.description;
-        final boolean deprecated = coalesce(builder.deprecated, false);
         return new EntityField<X, T>() {
 
             @Override
@@ -216,11 +219,14 @@ public final class EntityFieldBuilder {
 
             @Override
             public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.Description) {
-                    return description;
+                if (metadataKey == EntityMetadataKeys.Visibility) {
+                    return builder.visibility;
                 }
-                if (metadataKey == EntityMetadataKeys.IsDeprecated) {
-                    return deprecated;
+                if (metadataKey == EntityMetadataKeys.Description) {
+                    return builder.description;
+                }
+                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
+                    return builder.deprecationReason;
                 }
                 return null;
             }
@@ -242,7 +248,7 @@ public final class EntityFieldBuilder {
         final String name = coalesce(builder.name, attribute.getName());
         final boolean nullAllowed = coalesce(builder.nullAllowed, attribute.isOptional());
         final String description = coalesce(builder.description, QueryUtils.getDefaultDescription(attribute));
-        final boolean deprecated = coalesce(builder.deprecated, QueryUtils.isDefaultDeprecated(attribute));
+        final String deprecationReason = coalesce(builder.deprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
         return new EntityJoin<X, T>() {
 
             @Override
@@ -266,11 +272,14 @@ public final class EntityFieldBuilder {
 
             @Override
             public Object getMetadataValue(MetadataKey<?> metadataKey) {
+                if (metadataKey == EntityMetadataKeys.Visibility) {
+                    return builder.visibility;
+                }
                 if (metadataKey == EntityMetadataKeys.Description) {
                     return description;
                 }
-                if (metadataKey == EntityMetadataKeys.IsDeprecated) {
-                    return deprecated;
+                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
+                    return deprecationReason;
                 }
                 return null;
             }
@@ -295,8 +304,6 @@ public final class EntityFieldBuilder {
         final String name = requireNonNull(builder.name, "name required");
         final EntityResultType<Y> resultType = requireNonNull(builder.resultType, "result type required");
         final JoinSupplier<X, Y> supplier  = requireNonNull(builder.expression, "expression required");
-        final String description = builder.description;
-        final boolean deprecated = coalesce(builder.deprecated, false);
         return new EntityJoin<X, Y>() {
 
             @Override
@@ -316,11 +323,14 @@ public final class EntityFieldBuilder {
 
             @Override
             public Object getMetadataValue(MetadataKey<?> metadataKey) {
-                if (metadataKey == EntityMetadataKeys.Description) {
-                    return description;
+                if (metadataKey == EntityMetadataKeys.Visibility) {
+                    return builder.visibility;
                 }
-                if (metadataKey == EntityMetadataKeys.IsDeprecated) {
-                    return deprecated;
+                if (metadataKey == EntityMetadataKeys.Description) {
+                    return builder.description;
+                }
+                if (metadataKey == EntityMetadataKeys.DeprecationReason) {
+                    return builder.deprecationReason;
                 }
                 return null;
             }
@@ -375,9 +385,11 @@ public final class EntityFieldBuilder {
 
         Boolean nullAllowed;
 
+        EntitySchemaVisibility visibility;
+
         String description;
 
-        Boolean deprecated;
+        String deprecationReason;
 
         public AttributeFieldBuilder<X, T> name(String name) {
             this.name = name;
@@ -389,13 +401,18 @@ public final class EntityFieldBuilder {
             return this;
         }
 
+        public AttributeFieldBuilder<X, T> visibility(EntitySchemaVisibility visibility) {
+            this.visibility = visibility;
+            return this;
+        }
+
         public AttributeFieldBuilder<X, T> description(String description) {
             this.description = description;
             return this;
         }
 
-        public AttributeFieldBuilder<X, T> deprecated(Boolean deprecated) {
-            this.deprecated = deprecated;
+        public AttributeFieldBuilder<X, T> deprecationReason(String deprecationReason) {
+            this.deprecationReason = deprecationReason;
             return this;
         }
 
@@ -443,13 +460,15 @@ public final class EntityFieldBuilder {
 
         EntityResultType<T> resultType;
 
+        EntitySchemaVisibility visibility;
+
         ExpressionResolver<X, T> expression;
 
         ExpressionOrderByResolver<X> orderBy;
 
         String description;
 
-        Boolean deprecated;
+        String deprecationReason;
 
         public ExpressionFieldBuilder<X, T> name(String name) {
             this.name = name;
@@ -458,6 +477,11 @@ public final class EntityFieldBuilder {
 
         public ExpressionFieldBuilder<X, T> resultType(EntityResultType<T> resultType) {
             this.resultType = resultType;
+            return this;
+        }
+
+        public ExpressionFieldBuilder<X, T> visibility(EntitySchemaVisibility visibility) {
+            this.visibility = visibility;
             return this;
         }
 
@@ -476,17 +500,14 @@ public final class EntityFieldBuilder {
             return this;
         }
 
-        public ExpressionFieldBuilder<X, T> deprecated(Boolean deprecated) {
-            this.deprecated = deprecated;
+        public ExpressionFieldBuilder<X, T> deprecationReason(String deprecationReason) {
+            this.deprecationReason = deprecationReason;
             return this;
         }
 
         @Override
         public ExpressionFieldBuilder<X, T> apply(Consumer<ExpressionFieldBuilder<X, T>> consumer) {
-            if (consumer != null) {
-                consumer.accept(this);
-            }
-            return this;
+            return Utils.apply(this, consumer);
         }
 
         @Override
@@ -505,11 +526,13 @@ public final class EntityFieldBuilder {
 
         boolean nullAllowed;
 
+        EntitySchemaVisibility visibility;
+
         SelectionResultSupplier<X, T> resolver;
 
         String description;
 
-        Boolean deprecated;
+        String deprecationReason;
 
         public SelectionFieldBuilder<X, T> name(String name) {
             this.name = name;
@@ -531,6 +554,11 @@ public final class EntityFieldBuilder {
             return this;
         }
 
+        public SelectionFieldBuilder<X, T> visibility(EntitySchemaVisibility visibility) {
+            this.visibility = visibility;
+            return this;
+        }
+
         public SelectionFieldBuilder<X, T> resolver(SelectionResultSupplier<X, T> resolver) {
             this.resolver = resolver;
             return this;
@@ -541,17 +569,14 @@ public final class EntityFieldBuilder {
             return this;
         }
 
-        public SelectionFieldBuilder<X, T> deprecated(Boolean deprecated) {
-            this.deprecated = deprecated;
+        public SelectionFieldBuilder<X, T> deprecationReason(String deprecationReason) {
+            this.deprecationReason = deprecationReason;
             return this;
         }
 
         @Override
         public SelectionFieldBuilder<X, T> apply(Consumer<SelectionFieldBuilder<X, T>> consumer) {
-            if (consumer != null) {
-                consumer.accept(this);
-            }
-            return this;
+            return Utils.apply(this, consumer);
         }
 
         @Override
@@ -566,11 +591,13 @@ public final class EntityFieldBuilder {
 
         EntityResultType<Y> resultType;
 
+        EntitySchemaVisibility visibility;
+
         JoinSupplier<X, Y> expression;
 
         String description;
 
-        Boolean deprecated;
+        String deprecationReason;
 
         public ExpressionJoinBuilder<X, Y> name(String name) {
             this.name = name;
@@ -579,6 +606,11 @@ public final class EntityFieldBuilder {
 
         public ExpressionJoinBuilder<X, Y> resultType(EntityResultType<Y> resultType) {
             this.resultType = resultType;
+            return this;
+        }
+
+        public ExpressionJoinBuilder<X, Y> visibility(EntitySchemaVisibility visibility) {
+            this.visibility = visibility;
             return this;
         }
 
@@ -592,17 +624,14 @@ public final class EntityFieldBuilder {
             return this;
         }
 
-        public ExpressionJoinBuilder<X, Y> deprecated(Boolean deprecated) {
-            this.deprecated = deprecated;
+        public ExpressionJoinBuilder<X, Y> deprecationReason(String deprecationReason) {
+            this.deprecationReason = deprecationReason;
             return this;
         }
 
         @Override
         public ExpressionJoinBuilder<X, Y> apply(Consumer<ExpressionJoinBuilder<X, Y>> consumer) {
-            if (consumer != null) {
-                consumer.accept(this);
-            }
-            return this;
+            return Utils.apply(this, consumer);
         }
 
         @Override

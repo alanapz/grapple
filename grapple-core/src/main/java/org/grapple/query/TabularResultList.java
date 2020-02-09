@@ -7,7 +7,9 @@ import java.util.function.Supplier;
 
 public interface TabularResultList extends Iterable<TabularResultRow> {
 
-    int getTotalResults();
+    int getTotalResultCount();
+
+    boolean isEmpty();
 
     <U> List<U> map(Function<TabularResultRow, U> resultMapper);
 

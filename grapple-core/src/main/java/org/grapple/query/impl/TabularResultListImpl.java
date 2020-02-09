@@ -13,19 +13,24 @@ import org.grapple.query.TabularResultRow;
 
 final class TabularResultListImpl implements TabularResultList {
 
-    private final int totalResults;
+    private final int totalResultCount;
 
     private final List<TabularResultRowImpl> results;
 
-    TabularResultListImpl(int totalResults, List<TabularResultRowImpl> results) {
+    TabularResultListImpl(int totalResultCount, List<TabularResultRowImpl> results) {
         requireNonNull(results, "results");
-        this.totalResults = totalResults;
+        this.totalResultCount = totalResultCount;
         this.results = results;
     }
 
     @Override
-    public int getTotalResults() {
-        return totalResults;
+    public int getTotalResultCount() {
+        return totalResultCount;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return results.isEmpty();
     }
 
     @Override

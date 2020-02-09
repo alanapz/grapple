@@ -5,7 +5,6 @@ import static graphql.schema.GraphQLTypeUtil.isScalar;
 import static graphql.schema.GraphQLTypeUtil.unwrapNonNull;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.entitySelectionFieldWiring;
-import static org.grapple.utils.Utils.coalesce;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -31,8 +30,6 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
 
     private String description;
 
-    private boolean deprecated;
-
     private String deprecationReason;
 
     EntityFieldDefinitionImpl(EntitySchemaImpl schema, EntityDefinitionImpl<X> entity, EntityField<X, T> field) {
@@ -42,8 +39,7 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
         // Initialise default values
         this.fieldName = field.getName();
         this.description = field.getMetadata(EntityMetadataKeys.Description);
-        this.deprecated = coalesce(field.getMetadata(EntityMetadataKeys.IsDeprecated), false);
-        this.deprecationReason = coalesce(field.getMetadata(EntityMetadataKeys.DeprecationReason), "Deprecated");
+        this.deprecationReason = field.getMetadata(EntityMetadataKeys.DeprecationReason);
     }
 
     @Override
@@ -73,13 +69,18 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
     }
 
     @Override
+    public String getDescription() {
+        return description;
+    }
+
+    @Override
     public void setDescription(String description) {
         this.description = description;
     }
 
     @Override
-    public void setIsDeprecated(boolean deprecated) {
-        this.deprecated = deprecated;
+    public String getDeprecationReason() {
+        return deprecationReason;
     }
 
     @Override
@@ -100,7 +101,7 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
                 .name(fieldName)
                 .type(resultType)
                 .description(description)
-                .deprecate(deprecated ? deprecationReason : null);
+                .deprecate(deprecationReason);
 
         entityBuilder.field(fieldBuilder);
 
