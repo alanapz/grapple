@@ -1,7 +1,8 @@
 package org.grapple.schema;
 
 public enum EntityQueryType {
-    LIST,
+    DEFAULT,
+    LIST, //
     SCALAR_NON_NULL,
     SCALAR_NULL_ALLOWED;
 }

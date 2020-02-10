@@ -4,13 +4,18 @@ import static org.grapple.query.EntityFieldBuilder.attributeField;
 import static org.grapple.query.EntityFieldBuilder.attributeJoin;
 import static org.grapple.query.EntityFieldBuilder.expressionField;
 import static org.grapple.query.EntityFieldBuilder.expressionJoin;
+import static org.grapple.query.EntityFieldBuilder.nonQueryField;
 import static org.grapple.query.EntityResultType.nonNull;
 import static org.grapple.query.EntityResultType.nullAllowed;
 
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Subquery;
+import org.grapple.metadata.FieldNotExported;
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityFieldBuilder;
 import org.grapple.query.EntityJoin;
@@ -33,18 +38,20 @@ public class UserField {
 
     public static final QueryField<User, String> DisplayName = attributeField(User_.displayName);
 
+    public static final QueryField<User, Instant> LastLoginDate = attributeField(User_.lastLoginDate);
+
     public static final QueryField<User, String> DeprecatedDisplayName = attributeField(User_.displayName, fieldBuilder -> fieldBuilder
             .name("dep")
             .metadata(EntityMetadataKeys.DeprecationReason, "Xxx Deprecated Xxx"));
 
     public static final QueryField<User, String> DeprecatedDisplayName2 = attributeField(User_.displayName, fieldBuilder -> fieldBuilder
             .name("dep2")
-            .metadata(EntityMetadataKeys.SkipImport, false)
+            .metadata(EntityMetadataKeys.FieldNotExported, false)
             .metadata(EntityMetadataKeys.DeprecationReason, "Xxx Deprecated Xxx"));
 
     public static final QueryField<User, String> DeprecatedDisplayName3= attributeField(User_.displayName, fieldBuilder -> fieldBuilder
             .name("dep3")
-            .metadata(EntityMetadataKeys.SkipImport, true)
+            .metadata(EntityMetadataKeys.FieldNotExported, true)
             .metadata(EntityMetadataKeys.DeprecationReason, "Xxx Deprecated Xxx"));
 
     public static final EntityJoin<User, Company> Company = attributeJoin(User_.company);
@@ -67,7 +74,7 @@ public class UserField {
             .name("displayName2")
             .resultType(nullAllowed(String.class))
             .expression((ctx, queryBuilder) -> {
-
+                Thread.dumpStack();
                 Subquery<String> q2 = ctx.getQuery().subquery(String.class);
                 Root<User2> user2 = q2.from(User2.class);
                 q2.where(queryBuilder.equal(user2.get(User2_.id), ctx.get(User_.id)));
@@ -91,12 +98,13 @@ public class UserField {
             .expression((ctx, builder) -> builder.equal(builder.literal(123), builder.greatest(ctx.get(Id), builder.literal(123)))));
 
 
-    public static final EntityField<User, UserDetails> DETAILS = EntityFieldBuilder.nonQueryField(fieldBuilder -> fieldBuilder
+    @FieldNotExported
+    public static final EntityField<User, UserDetails> DETAILS = nonQueryField(fieldBuilder -> fieldBuilder
             .name("userDetails")
             .resultType(nullAllowed(UserDetails.class))
             .resolver((ctx, builder) -> tuple -> (UserDetails) null));
 
-    public static final EntityField<User, String> UserGuid = EntityFieldBuilder.nonQueryField(fieldBuilder -> fieldBuilder
+    public static final EntityField<User, String> UserGuid = nonQueryField(fieldBuilder -> fieldBuilder
             .name("userGuid")
             .resultType(nullAllowed(String.class))
             .resolver((ctx, builder) -> tuple -> UUID.randomUUID().toString()));
@@ -111,16 +119,45 @@ public class UserField {
 
         public String username3;
 
+        public Set<CustomDetailsItem> items;
+
         private CustomDetails(String username) {
             this.username = username;
             this.username1 = username + " 1";
             this.username2 = username + " 2";
             this.username3 = username + " 3";
+
+            this.items = new HashSet<>();
+
+            CustomDetailsItem customDetailsItem = new CustomDetailsItem();
+            customDetailsItem.description = "VALUE_1";
+            customDetailsItem.value = CustomDetailsItemValue.VALUE_1;
+
+            items.add(customDetailsItem);
+
+            CustomDetailsItem customDetailsItem2 = new CustomDetailsItem();
+            customDetailsItem2.description = "VALUE_2";
+            customDetailsItem2.value = CustomDetailsItemValue.VALUE_2;
+
+            items.add(customDetailsItem2);
         }
+    }
+
+    public static class CustomDetailsItem {
+
+        public CustomDetailsItemValue value;
+
+        public String description;
 
     }
 
-    public static final NonQueryField<User, CustomDetails> UserCustomDetails = EntityFieldBuilder.nonQueryField(fieldBuilder -> fieldBuilder
+    public enum CustomDetailsItemValue {
+        VALUE_1,
+        VALUE_2
+    }
+
+    @FieldNotExported
+    public static final NonQueryField<User, CustomDetails> UserCustomDetails = nonQueryField(fieldBuilder -> fieldBuilder
             .name("userCustomDetails")
             .resultType(nullAllowed(CustomDetails.class))
             .resolver((ctx, builder) -> {
@@ -128,27 +165,30 @@ public class UserField {
                 return tuple -> new CustomDetails(tuple.get(username));
             }));
 
-    public static final EntityField<User, String> UserCustomDetails1 = EntityFieldBuilder.nonQueryField(fieldBuilder -> fieldBuilder
+    @FieldNotExported
+    public static final EntityField<User, String> UserCustomDetails1 = nonQueryField(fieldBuilder -> fieldBuilder
             .name("userCustomDetails1")
             .resultType(nullAllowed(String.class))
             .resolver((ctx, builder) -> {
-                final NonQuerySelection<User, CustomDetails> username = ctx.addNonQuerySelection(UserCustomDetails);
+                final NonQuerySelection<CustomDetails> username = ctx.addNonQuerySelection(UserCustomDetails);
                 return tuple -> username.get(tuple).username1;
             }));
 
-    public static final EntityField<User, String> UserCustomDetails2 = EntityFieldBuilder.nonQueryField(fieldBuilder -> fieldBuilder
+    @FieldNotExported
+    public static final EntityField<User, String> UserCustomDetails2 = nonQueryField(fieldBuilder -> fieldBuilder
             .name("userCustomDetails2")
             .resultType(nullAllowed(String.class))
             .resolver((ctx, builder) -> {
-                final NonQuerySelection<User, CustomDetails> username = ctx.addNonQuerySelection(UserCustomDetails);
+                final NonQuerySelection<CustomDetails> username = ctx.addNonQuerySelection(UserCustomDetails);
                 return tuple -> username.get(tuple).username2;
             }));
 
-    public static final EntityField<User, String> UserCustomDetails3 = EntityFieldBuilder.nonQueryField(fieldBuilder -> fieldBuilder
+    @FieldNotExported
+    public static final EntityField<User, String> UserCustomDetails3 = nonQueryField(fieldBuilder -> fieldBuilder
             .name("UserCustomDetails3")
             .resultType(nullAllowed(String.class))
             .resolver((ctx, builder) -> {
-                final NonQuerySelection<User, CustomDetails> username = ctx.addNonQuerySelection(UserCustomDetails);
+                final NonQuerySelection<CustomDetails> username = ctx.addNonQuerySelection(UserCustomDetails);
                 return tuple -> username.get(tuple).username3;
             }));
 

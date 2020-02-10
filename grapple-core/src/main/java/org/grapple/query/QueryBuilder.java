@@ -8,6 +8,7 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Order;
 import javax.persistence.criteria.Predicate;
+import javax.persistence.metamodel.SingularAttribute;
 
 public interface QueryBuilder extends CriteriaBuilder {
 
@@ -20,6 +21,8 @@ public interface QueryBuilder extends CriteriaBuilder {
     Expression<Boolean> falseLiteral();
 
     Expression<Boolean> toExpression(Predicate predicate);
+
+    <T> Expression<T> wrapPredicateIfNecessary(Expression<T> expression);
 
     Predicate isBitmaskSet(Expression<Integer> bitmask, int value);
 
@@ -47,5 +50,10 @@ public interface QueryBuilder extends CriteriaBuilder {
     Predicate likeNonAnchored(Expression<String> x, String value);
 
     <T> Predicate in(Expression<? extends T> expression, Set<T> values);
+
+    Expression<String> concat(List<Expression<String>> values);
+
+    @SuppressWarnings("squid:S1221") // Methods should not be named "tostring", "hashcode" or "equal"
+    <X, T> Predicate equal(SingularAttribute<X, T> attribute, EntityContext<X> left, EntityContext<X> right);
 
 }

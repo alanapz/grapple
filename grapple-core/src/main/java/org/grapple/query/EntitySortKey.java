@@ -1,7 +1,6 @@
-package org.grapple.utils;
+package org.grapple.query;
 
 import javax.persistence.criteria.Expression;
-import org.grapple.query.EntityContext;
 
 public interface EntitySortKey<X> {
 

@@ -131,8 +131,8 @@ public final class EntityFieldBuilder {
         final ExpressionFieldBuilder<X, T> builder = new ExpressionFieldBuilder<X, T>().apply(fieldBuilder);
         final String name = requireNonNullArgument(builder.name, "name required");
         final EntityResultType<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
-        final ExpressionResolver<X, T> expression = requireNonNullArgument(builder.expression, "expression required");
-        final ExpressionOrderByResolver<X> orderBy = coalesce(builder.orderBy, expression::get);
+        final ExpressionResolver<X, T> expressionResolver = requireNonNullArgument(builder.expression, "expressionResolver required");
+        final ExpressionOrderByResolver<X> orderBy = coalesce(builder.orderBy, expressionResolver::get);
         final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
         return new QueryField<X, T>() {
 
@@ -155,7 +155,7 @@ public final class EntityFieldBuilder {
 
             @Override
             public Expression<T> getExpression(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                return expression.get(ctx, queryBuilder);
+                return queryBuilder.wrapPredicateIfNecessary(expressionResolver.get(ctx, queryBuilder));
             }
 
             @Override

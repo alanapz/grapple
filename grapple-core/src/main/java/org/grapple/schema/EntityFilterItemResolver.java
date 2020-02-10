@@ -5,7 +5,7 @@ import org.grapple.query.EntityFilter;
 import org.grapple.query.FetchSet;
 
 @FunctionalInterface
-public interface EntityCustomFilterResolver<X, T> {
+public interface EntityFilterItemResolver<X, T> {
 
     EntityFilter<X> get(DataFetchingEnvironment env, FetchSet<X> fetchSet, T args);
 

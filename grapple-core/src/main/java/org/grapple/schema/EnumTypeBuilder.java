@@ -4,6 +4,6 @@ import graphql.schema.GraphQLEnumType;
 
 public interface EnumTypeBuilder {
 
-    GraphQLEnumType buildEnumType(Class<? extends Enum<?>> enumClass);
+    <E extends Enum<E>> GraphQLEnumType buildEnumType(Class<E> enumClass);
 
 }

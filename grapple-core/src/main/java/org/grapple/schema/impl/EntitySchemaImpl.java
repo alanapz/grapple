@@ -1,15 +1,11 @@
 package org.grapple.schema.impl;
 
 import static graphql.schema.GraphQLNonNull.nonNull;
-import static java.lang.String.format;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.requireNonNull;
-import static org.grapple.utils.Utils.uncheckedCast;
 import static org.jooq.lambda.Seq.seq;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
@@ -22,54 +18,43 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
-import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLList;
-import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.idl.SchemaPrinter;
-import org.grapple.query.EntityField;
-import org.grapple.query.EntityJoin;
-import org.grapple.query.EntityMetadataKeys;
 import org.grapple.query.EntityResultType;
-import org.grapple.query.QueryDefinitions;
-import org.grapple.reflect.ClassLiteral;
 import org.grapple.reflect.ReflectUtils;
 import org.grapple.reflect.TypeConverter;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.scalars.GrappleScalars;
-import org.grapple.schema.DefinitionImportException;
 import org.grapple.schema.EntityDefaultNameGenerator;
-import org.grapple.schema.EntityDefinition;
-import org.grapple.schema.EntityDefinitionScannerCallback;
-import org.grapple.schema.EntityQueryResolver;
-import org.grapple.schema.EntityQueryScannerCallback;
+import org.grapple.schema.EntityQueryExecutionListener;
 import org.grapple.schema.EntitySchema;
 import org.grapple.schema.EntitySchemaListener;
+import org.grapple.schema.EntitySchemaScannerCallback;
 import org.grapple.schema.EnumTypeBuilder;
-import org.grapple.schema.impl.EntityQueryScanner.QueryMethodResult;
+import org.grapple.schema.UnmanagedQueryDefinition;
+import org.grapple.schema.UnmanagedTypeDefinition;
 import org.grapple.utils.NoDuplicatesMap;
-import org.grapple.utils.NoDuplicatesSet;
 import org.grapple.utils.Utils;
-import org.jooq.lambda.tuple.Tuple2;
 
 final class EntitySchemaImpl implements EntitySchema {
 
     private final List<EntitySchemaListener> schemaListeners = new ArrayList<>();
 
-    private final Map<Class<?>, EntityDefinitionImpl<?>> entities = new NoDuplicatesMap<>();
+    private final EntityQueryExecutionListeners entityQueryExecutionListeners = new EntityQueryExecutionListeners();
 
-    private final Map<Type, GraphQLType> typeMappings = new NoDuplicatesMap<>();
+    private final Map<Class<?>, EntityDefinitionImpl<?>> entities = new NoDuplicatesMap<>();
 
     private EnumTypeBuilder enumTypeBuilder = EntitySchemaDefaults::buildEnumTypeForClass;
 
@@ -79,9 +64,9 @@ final class EntitySchemaImpl implements EntitySchema {
 
     private final TypeConverter typeConverter = new TypeConverter();
 
-    private final Set<GraphQLObjectType> unmanagedTypes = new NoDuplicatesSet<>();
+    private final Map<String, UnmanagedQueryDefinitionImpl> unmanagedQueries = new NoDuplicatesMap<>();
 
-    private final Map<Tuple2<String, String>, DataFetcher<?>> unmanagedDataFetchers = new HashMap<>(); // Overwrite permitted
+    private final Map<Type, UnmanagedTypeDefinitionImpl<?>> unmanagedTypes = new NoDuplicatesMap<>(new LinkedHashMap<>());
 
     private static final Map<Type, GraphQLOutputType> defaultTypeMappings = new HashMap<>();
 
@@ -107,18 +92,24 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public <X> EntityDefinition<X> getEntity(Class<X> entityClass) {
-        requireNonNull(entityClass, "entityClass");
-        return (EntityDefinition<X>) entities.get(entityClass);
+    public void addEntityQueryExecutionListener(EntityQueryExecutionListener listener) {
+        requireNonNull(listener, "listener");
+        entityQueryExecutionListeners.addListener(listener);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <X> EntityDefinition<X> addEntity(Class<X> entityClass) {
+    public <X> EntityDefinitionImpl<X> getEntity(Class<X> entityClass) {
         requireNonNull(entityClass, "entityClass");
-        if (entities.containsKey(entityClass)) {
-            return (EntityDefinition<X>) entities.get(entityClass);
+        return (EntityDefinitionImpl<X>) entities.get(entityClass);
+    }
+
+    @Override
+    public <X> EntityDefinitionImpl<X> addEntity(Class<X> entityClass) {
+        requireNonNull(entityClass, "entityClass");
+        final @SuppressWarnings("unchecked") EntityDefinitionImpl<X> existing = (EntityDefinitionImpl<X>) entities.get(entityClass);
+        if (existing != null) {
+            return existing;
         }
         final EntityDefinitionImpl<X> entityDefinition = new EntityDefinitionImpl<>(this, entityClass);
         entities.put(entityClass, entityDefinition);
@@ -148,119 +139,44 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     @Override
-    public void importDefinitions(Set<String> packageNames, EntityDefinitionScannerCallback scannerCallback) {
-        requireNonNull(packageNames, "packageNames");
-        requireNonNull(scannerCallback, "scannerCallback");
-        for (Class<?> definitionsClass: ReflectUtils.getAllTypesAnnotatedWith(packageNames, QueryDefinitions.class,false)) {
-            if (!scannerCallback.scanDefinitions(definitionsClass)) {
-                continue;
-            }
-            for (Field field : definitionsClass.getFields()) {
-                try {
-                    if (Modifier.isPublic(field.getModifiers()) && Modifier.isStatic(field.getModifiers())) {
-                        importDefinition(field, field.getGenericType(), field.get(null), scannerCallback);
-                    }
-                }
-                catch (IllegalAccessException e) {
-                    throw new DefinitionImportException(format("Couldn't process definitions for: %s", field), e);
-                }
-            }
-        }
-    }
-
-    @Override
     public TypeConverter getTypeConverter() {
         return typeConverter;
     }
 
     @Override
-    public void addUnmanagedType(GraphQLObjectType type) {
+    public void addUnmanagedQuery(String queryAlias, Consumer<UnmanagedQueryDefinition> consumer) {
+        requireNonNull(queryAlias, "queryAlias");
+        requireNonNull(consumer, "consumer");
+        final UnmanagedQueryDefinitionImpl existing = unmanagedQueries.get(queryAlias);
+        if (existing != null) {
+            consumer.accept(existing);
+            return;
+        }
+        final UnmanagedQueryDefinitionImpl unmanagedQuery = new UnmanagedQueryDefinitionImpl(queryAlias);
+        consumer.accept(unmanagedQuery);
+        unmanagedQuery.validate();
+        unmanagedQueries.put(queryAlias, unmanagedQuery);
+    }
+
+    @Override
+    public <T> void addUnmanagedType(TypeLiteral<T> type, Consumer<UnmanagedTypeDefinition<T>> consumer) {
         requireNonNull(type, "type");
-        unmanagedTypes.add(type);
+        requireNonNull(consumer, "consumer");
+        final @SuppressWarnings("unchecked") UnmanagedTypeDefinitionImpl<T> existing = (UnmanagedTypeDefinitionImpl<T>) unmanagedTypes.get(type.getType());
+        if (existing != null) {
+            consumer.accept(existing);
+            return;
+        }
+        final UnmanagedTypeDefinitionImpl<T> unmanagedType = new UnmanagedTypeDefinitionImpl<>(type);
+        consumer.accept(unmanagedType);
+        unmanagedType.validate();
+        unmanagedTypes.put(type.getType(), unmanagedType);
     }
 
     @Override
-    public void addUnmanagedDataFetcher(String parentTypeName, String fieldName, DataFetcher<?> dataFetcher) {
-        requireNonNull(parentTypeName, "parentTypeName");
-        requireNonNull(fieldName, "type");
-        requireNonNull(dataFetcher, "dataFetcher");
-        unmanagedDataFetchers.put(new Tuple2<>(parentTypeName, fieldName), dataFetcher);
-    }
-
-    @Override
-    public void addTypeMapping(Type javaType, GraphQLType graphQLType) {
-        requireNonNull(javaType, "javaType");
-        requireNonNull(graphQLType, "graphQLType");
-        typeMappings.put(javaType, graphQLType);
-    }
-
-    @Override
-    public void importQueries(Object instance, EntityQueryScannerCallback scannerCallback) {
-        requireNonNull(instance, "instance");
+    public EntitySchemaScannerImpl buildEntitySchemaScanner(EntitySchemaScannerCallback scannerCallback) {
         requireNonNull(scannerCallback, "scannerCallback");
-        final Set<QueryMethodResult<?>> results = EntityQueryScanner.processClass(instance.getClass());
-        if (results.isEmpty()) {
-            return;
-        }
-        for (QueryMethodResult<?> result: results) {
-            importQueryResult(instance, result, scannerCallback);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private  <X> void importQueryResult(Object instance, QueryMethodResult<X> methodResult, EntityQueryScannerCallback scannerCallback) {
-        requireNonNull(instance, "instance");
-        requireNonNull(scannerCallback, "scannerCallback");
-        requireNonNull(methodResult, "methodResult");
-        final EntityDefinitionImpl<X> entityDefinition = (EntityDefinitionImpl<X>) entities.get(methodResult.entityClass);
-        if (entityDefinition == null) {
-            scannerCallback.entityNotFound(methodResult.method, methodResult.entityClass);
-            return;
-        }
-        if (!scannerCallback.acceptQuery(methodResult.method)) {
-            return;
-        }
-        final EntityQueryResolver<X> entityQueryResolver = EntityQueryScanner.buildQueryResolver(methodResult, instance);
-        final GeneratedEntityQueryDefinitionImpl<X> entityQueryDefinition = entityDefinition.addGeneratedQuery(methodResult, entityQueryResolver);
-        scannerCallback.configureQuery(methodResult.method, entityQueryDefinition);
-    }
-
-    private void importDefinition(Field source, Type type, Object value, EntityDefinitionScannerCallback scannerCallback) {
-        if ((value instanceof EntityField<?, ?>) || (value instanceof EntityJoin<?, ?>)) {
-            final Class<?> entityClass = ReflectUtils.parseEntityFromGenericType(source, type);
-            if (!entities.containsKey(entityClass) && !scannerCallback.acceptEntity(entityClass)) {
-                return;
-            }
-            addEntity(entityClass).apply(entity -> {
-                scannerCallback.configureEntity(entity);
-                if (value instanceof EntityField<?, ?>) {
-                    final EntityField<?, ?> entityField = (EntityField<?, ?>) value;
-                    if (Boolean.TRUE.equals(entityField.getMetadata(EntityMetadataKeys.SkipImport))) {
-                        return;
-                    }
-                    if (scannerCallback.acceptField(uncheckedCast(entity), entityField)) {
-                        entity.addField(uncheckedCast(entityField)).apply(scannerCallback::configureField);
-                    }
-                }
-                if (value instanceof EntityJoin<?, ?>) {
-                    final EntityJoin<?, ?> entityJoin = (EntityJoin<?, ?>) value;
-                    if (Boolean.TRUE.equals(entityJoin.getMetadata(EntityMetadataKeys.SkipImport))) {
-                        return;
-                    }
-                    if (scannerCallback.acceptJoin(uncheckedCast(entity), entityJoin)) {
-                        entity.addJoin(uncheckedCast(entityJoin)).apply(scannerCallback::configureJoin);
-                    }
-                }
-            });
-        }
-        if (value instanceof Collection<?>) {
-            final Type componentType = ReflectUtils.getGenericTypeArgument(type, 0);
-            ((Collection<?>) value).forEach(childItem -> importDefinition(source, componentType, childItem, scannerCallback));
-        }
-        if (value instanceof Map<?, ?>) {
-            final Type componentType = ReflectUtils.getGenericTypeArgument(type, 1); // (0 = Key, 1 = Value)
-            ((Map<?, ?>) value).values().forEach(childItem -> importDefinition(source, componentType, childItem, scannerCallback));
-        }
+        return new EntitySchemaScannerImpl(this, scannerCallback);
     }
 
     <T> FieldFilterDefinitionImpl<T> generateFieldFilter(TypeLiteral<T> fieldType, GraphQLType gqlType) {
@@ -279,10 +195,22 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     @Override
-    public GraphQLSchema generate() {
+    public EntitySchemaResultImpl generate() {
         final GraphQLSchema.Builder builder = GraphQLSchema.newSchema();
 
-        final SchemaBuilderContext ctx = new SchemaBuilderContext(this, unmanagedTypes, unmanagedDataFetchers, typeConverter);
+        final SchemaBuilderContext ctx = new SchemaBuilderContext(this,
+                null, // XXX: TODO: FIXME Move field visibility here instead GQP visiiblity
+                enumTypeBuilder,
+                typeConverter,
+                entityQueryExecutionListeners.copy(),
+                "Query");
+
+        for (UnmanagedTypeDefinitionImpl<?> unmanagedType: unmanagedTypes.values()) {
+            unmanagedType.build(ctx);
+        }
+        for (UnmanagedQueryDefinitionImpl unmanagedQuery: unmanagedQueries.values()) {
+            unmanagedQuery.build(ctx);
+        }
 
         for (EntityDefinitionImpl<?> metadata: entities.values()) {
             metadata.build(ctx);
@@ -290,13 +218,19 @@ final class EntitySchemaImpl implements EntitySchema {
 
         ctx.generate(builder);
 
-        return builder.build();
+        return new EntitySchemaResultImpl(
+                builder.build(),
+                ctx.getSchemaBuilderElementVisibility());
     }
 
     @SuppressWarnings("unchecked")
-    <X> EntityDefinitionImpl<X> getEntityFor(EntityResultType<X> type) {
-        requireNonNull(type, "type");
-        return (EntityDefinitionImpl<X>) entities.get(((ClassLiteral<X>) type.getType()).getType());
+    <X> EntityDefinitionImpl<X> getEntityFor(EntityResultType<X> resultType) {
+        requireNonNull(resultType, "resultType");
+        final Type type = resultType.getType().getType();
+        if (!(type instanceof Class<?>)) { // Only concrete classes can be entities
+            return null;
+        }
+        return (EntityDefinitionImpl<X>) entities.get(type);
     }
 
     GraphQLOutputType getResultTypeFor(SchemaBuilderContext ctx, EntityResultType<?> resultType) {
@@ -309,9 +243,6 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     public GraphQLOutputType getUnwrappedTypeFor(SchemaBuilderContext ctx, Type type) {
-        if (typeMappings.containsKey(type)) {
-            return (GraphQLOutputType) typeMappings.get(type);
-        }
         if (defaultTypeMappings.containsKey(type)) {
             return defaultTypeMappings.get(type);
         }
@@ -321,18 +252,20 @@ final class EntitySchemaImpl implements EntitySchema {
                 return entities.get(classType).getEntityTypeRef();
             }
             if (classType.isArray()) {
-                return GraphQLList.list(getUnwrappedTypeFor(ctx, classType.getComponentType()));
+                final GraphQLType unwrappedType = getUnwrappedTypeFor(ctx, classType.getComponentType());
+                return (unwrappedType != null ? GraphQLList.list(unwrappedType) : null);
             }
         }
         if (type instanceof ParameterizedType) {
             final Class<?> classType = ReflectUtils.getRawTypeFor(type);
             if (classType != null && Collection.class.isAssignableFrom(classType)) {
-                return GraphQLList.list(getUnwrappedTypeFor(ctx, ReflectUtils.getGenericTypeArgument(type, 0)));
+                final GraphQLType unwrappedType = getUnwrappedTypeFor(ctx, ReflectUtils.getGenericTypeArgument(type, 0));
+                return (unwrappedType != null ? GraphQLList.list(unwrappedType) : null);
             }
         }
         if (type instanceof GenericArrayType) {
-            final GenericArrayType arrayType = (GenericArrayType) type;
-            return GraphQLList.list(getUnwrappedTypeFor(ctx, arrayType.getGenericComponentType()));
+            final GraphQLType unwrappedType = getUnwrappedTypeFor(ctx, ((GenericArrayType) type).getGenericComponentType());
+            return (unwrappedType != null ? GraphQLList.list(unwrappedType) : null);
         }
         return ctx.getUnwrappedTypeFor(type);
     }
@@ -349,7 +282,7 @@ final class EntitySchemaImpl implements EntitySchema {
 
     @Override
     public String toString() {
-        return defaultSchemaPrinter.print(generate());
+        return defaultSchemaPrinter.print(generate().getSchema());
     }
 
     static {
@@ -389,10 +322,5 @@ final class EntitySchemaImpl implements EntitySchema {
         defaultTypeMappings.put(URL.class, ExtendedScalars.Url);
 
         defaultTypeMappings.put(YearMonth.class, GrappleScalars.YearMonthScalar);
-    }
-
-    static {
-
-        // defaultTypeMappings.put(EitType.class, GraphQLEnumType.newEnum().name("EitType").value("value1", "456").value("value2", "789").build());
     }
 }

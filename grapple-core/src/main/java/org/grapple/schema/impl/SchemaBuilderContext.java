@@ -6,12 +6,13 @@ import static graphql.schema.GraphQLObjectType.newObject;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.FieldFilterWiring.fieldFilterWiring;
+import static org.grapple.utils.Utils.readOnlyCopy;
 import static org.jooq.lambda.Seq.seq;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +28,8 @@ import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
+import graphql.schema.GraphQLType;
+import org.grapple.core.ElementVisibility;
 import org.grapple.query.EntityFilter;
 import org.grapple.query.EntityResultType;
 import org.grapple.query.FetchSet;
@@ -40,6 +43,8 @@ import org.grapple.reflect.TypeConverter;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntityDefinition;
 import org.grapple.schema.EntityQueryType;
+import org.grapple.schema.EnumTypeBuilder;
+import org.grapple.schema.TypeNotMappedException;
 import org.grapple.schema.impl.RuntimeWiring.EntityFilterWiring;
 import org.grapple.schema.impl.RuntimeWiring.EntityOrderByWiring;
 import org.grapple.schema.impl.RuntimeWiring.EntityQueryParameterWiring;
@@ -47,19 +52,24 @@ import org.grapple.schema.impl.RuntimeWiring.EntityQueryWiring;
 import org.grapple.schema.impl.RuntimeWiring.EntitySelectionWiring;
 import org.grapple.schema.impl.RuntimeWiring.FieldFilterWiring;
 import org.grapple.utils.NoDuplicatesMap;
-import org.grapple.utils.NoDuplicatesSet;
 import org.grapple.utils.UnexpectedException;
 import org.jooq.lambda.tuple.Tuple2;
 
-final class SchemaBuilderContext {
+final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderContext {
 
     private final EntitySchemaImpl schema;
 
-    private final Set<GraphQLObjectType> unmanagedTypes;
+    private final Set<String> rolesHeld;
 
-    private final Map<Tuple2<String, String>, DataFetcher<?>> unmanagedDataFetchers;
+    private final Map<Type, GraphQLObjectType> unmanagedTypes = new NoDuplicatesMap<>(new LinkedHashMap<>());
+
+    private final Map<FieldCoordinates, DataFetcher<?>> unmanagedDataFetchers = new NoDuplicatesMap<>();
+
+    private final EnumTypeBuilder enumTypeBuilder;
 
     private final TypeConverter typeConverter;
+
+    private final EntityQueryExecutionListeners entityQueryExecutionListeners;
 
     private final Map<EntityDefinition<?>, GraphQLObjectType.Builder> entityTypes = new HashMap<>();
 
@@ -89,41 +99,74 @@ final class SchemaBuilderContext {
 
     private final Map<Tuple2<TypeLiteral<?>, String>, FieldFilterWiring<?>> fieldFilterWirings = new NoDuplicatesMap<>();
 
-    private final Set<GraphQLFieldDefinition> entityQueryFields = new NoDuplicatesSet<>();
+    private final Map<String, GraphQLFieldDefinition> rootQueryFields = new NoDuplicatesMap<>();
+
+    private final String rootQueryTypeName;
+
+    private final SchemaBuilderElementVisibility schemaBuilderElementVisibility;
 
     SchemaBuilderContext(EntitySchemaImpl schema,
-                         Set<GraphQLObjectType> unmanagedTypes,
-                         Map<Tuple2<String, String>, DataFetcher<?>> unmanagedDataFetchers,
-                         TypeConverter typeConverter) {
+                         Set<String> rolesHeld,
+                         EnumTypeBuilder enumTypeBuilder,
+                         TypeConverter typeConverter,
+                         EntityQueryExecutionListeners entityQueryExecutionListeners,
+                         String rootQueryTypeName) {
         this.schema = requireNonNull(schema, "schema");
-        this.unmanagedTypes = new HashSet<>(unmanagedTypes);
-        this.unmanagedDataFetchers = new NoDuplicatesMap<>(unmanagedDataFetchers);
+        this.rolesHeld = readOnlyCopy(rolesHeld);
+        this.enumTypeBuilder = requireNonNull(enumTypeBuilder, "enumTypeBuilder");
         this.typeConverter = requireNonNull(typeConverter, "typeConverter");
+        this.entityQueryExecutionListeners = requireNonNull(entityQueryExecutionListeners, "entityQueryExecutionListeners").copy();
+        this.rootQueryTypeName = requireNonNull(rootQueryTypeName, "rootQueryTypeName");
+        this.schemaBuilderElementVisibility = new SchemaBuilderElementVisibility(rootQueryTypeName);
     }
 
     EntitySchemaImpl getSchema() {
         return schema;
     }
 
-    SchemaBuilderContext addEntityType(EntityDefinition<?> entity, GraphQLObjectType.Builder entityType) {
+    String getRootQueryTypeName() {
+        return rootQueryTypeName;
+    }
+
+    boolean isSchemaElementVisible(ElementVisibility visibility) {
+        return (visibility == null || rolesHeld == null || visibility.isVisible(rolesHeld));
+    }
+
+    void addEntityType(EntityDefinition<?> entity, GraphQLObjectType.Builder entityType) {
         requireNonNull(entity, "entity");
         requireNonNull(entityType, "entityType");
         entityTypes.put(entity, entityType);
-        return this;
     }
 
-    SchemaBuilderContext addContainerType(EntityDefinition<?> entity, GraphQLObjectType.Builder containerType) {
+    void addContainerType(EntityDefinition<?> entity, GraphQLObjectType.Builder containerType) {
         requireNonNull(entity, "entity");
         requireNonNull(containerType, "containerType");
         containerTypes.put(entity, containerType);
-        return this;
     }
 
-    SchemaBuilderContext addEntityFilter(Class<?> entityClass, GeneratedEntityFilter<?> entityFilter) {
+    void addEntityFilter(Class<?> entityClass, GeneratedEntityFilter<?> entityFilter) {
         requireNonNull(entityClass, "entityClass");
         requireNonNull(entityFilter, "entityFilter");
         entityFilters.put(entityClass, entityFilter);
-        return this;
+    }
+
+    void addUnmanagedQuery(Type type, GraphQLObjectType graphQLType) {
+        requireNonNull(type, "type");
+        requireNonNull(graphQLType, "graphQLType");
+        unmanagedTypes.put(type, graphQLType);
+    }
+
+    void addUnmanagedType(Type type, GraphQLObjectType graphQLType) {
+        requireNonNull(type, "type");
+        requireNonNull(graphQLType, "graphQLType");
+        unmanagedTypes.put(type, graphQLType);
+    }
+
+    void addUnmanagedDataFetcher(String typeName, String fieldName, DataFetcher<?> dataFetcher) {
+        requireNonNull(typeName, "typeName");
+        requireNonNull(fieldName, "fieldName");
+        requireNonNull(dataFetcher, "dataFetcher");
+        unmanagedDataFetchers.put(coordinates(typeName, fieldName), dataFetcher);
     }
 
     @SuppressWarnings("unchecked")
@@ -149,7 +192,7 @@ final class SchemaBuilderContext {
         requireNonNull(entityClass, "entityClass");
         requireNonNull(fetchSet, "fetchSet");
         requireNonNull(selectionSet, "selectionSet");
-        for (Field field: seq(selectionSet.getSelections()).filter(Field.class::isInstance).cast(Field.class)) {
+        for (Field field: seq(selectionSet.getSelections()).filter(SchemaUtils::isQueryableField).cast(Field.class)) {
             final Tuple2<Class<?>, String> selectionKey = new Tuple2<>(entityClass, field.getName());
             final EntitySelectionWiring<X> selectionWiring = (EntitySelectionWiring<X>) entitySelectionWirings.get(selectionKey);
             if (selectionWiring == null) {
@@ -166,7 +209,7 @@ final class SchemaBuilderContext {
         requireNonNull(selectionSet, "selectionSet");
         requireNonNull(resultRow, "resultRow");
         final Map<String, Object> response = new HashMap<>();
-        for (Field field: seq(selectionSet.getSelections()).filter(Field.class::isInstance).cast(Field.class)) {
+        for (Field field: seq(selectionSet.getSelections()).filter(SchemaUtils::isQueryableField).cast(Field.class)) {
             final Tuple2<Class<?>, String> selectionKey = new Tuple2<>(entityClass, field.getName());
             final EntitySelectionWiring<X> selectionWiring = (EntitySelectionWiring<X>) entitySelectionWirings.get(selectionKey);
             if (selectionWiring == null) {
@@ -187,9 +230,9 @@ final class SchemaBuilderContext {
         entityOrderByWirings.put(new Tuple2<>(entityOrderByWiring.getEntityClass(), entityOrderByWiring.getFieldName()), entityOrderByWiring);
     }
 
-    <X> void addEntityQueryField(GraphQLFieldDefinition fieldDefinition) {
+    void addRootQueryField(GraphQLFieldDefinition fieldDefinition) {
         requireNonNull(fieldDefinition, "fieldDefinition");
-        entityQueryFields.add(fieldDefinition);
+        rootQueryFields.put(fieldDefinition.getName(), fieldDefinition);
     }
 
     <X> void addEntityQueryWiring(EntityQueryWiring<X> entityQueryWiring) {
@@ -241,10 +284,9 @@ final class SchemaBuilderContext {
                 throw new UnexpectedException(format("Unmapped entity filter: %s", filterKey));
             }
             final EntityFilter<X> entityFilter = entityFilterWiring.resolveFilter(this, environment, fetchSet, argValue);
-            if (entityFilter == null) {
-                throw new UnexpectedException(format("Unexpected null entity filter: %s", filterKey));
+            if (entityFilter != null) {
+                filters.add(entityFilter);
             }
-            filters.add(entityFilter);
         });
 
         return Filters.and(filters);
@@ -334,9 +376,15 @@ final class SchemaBuilderContext {
         return null;
     }
 
-        @SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked")
     GraphQLOutputType getUnwrappedTypeFor(Type type) {
         requireNonNull(type, "type");
+
+        final GraphQLObjectType unmanagedType = unmanagedTypes.get(type);
+        if (unmanagedType != null) {
+            return unmanagedType;
+        }
+
         if (type instanceof Class<?>) {
             final Class<?> classType = (Class<?>) type;
 
@@ -344,15 +392,22 @@ final class SchemaBuilderContext {
             if (Enum.class.isAssignableFrom(classType)) {
                 // If we already generated a corresponding enum class, return typeref directly
                 // Otherwise, generate and add to our list of cache (we will add to the schema via schemaBuilder.additionalType) later on
-                final GraphQLEnumType enumType = enumTypeCache.computeIfAbsent(classType, unused -> schema.getEnumTypeBuilder().buildEnumType((Class<Enum<?>>) classType));
+
+                final GraphQLEnumType existing = enumTypeCache.get(classType);
+                if (existing != null) {
+                    return existing;
+                }
+                final GraphQLEnumType enumType = enumTypeBuilder.buildEnumType(classType.asSubclass(Enum.class));
+                if (enumType == null) {
+                    return null;
+                }
+                enumTypeCache.put(classType, enumType);
                 return enumType;
             }
         }
 
-//        System.out.println(type);
-        return null;
+        throw new TypeNotMappedException(format("Type: %s not mapped", type.getTypeName()));
     }
-
 
     public void generate(GraphQLSchema.Builder schemaBuilder) {
         for (Map.Entry<?, GraphQLObjectType.Builder> entry: entityTypes.entrySet()) {
@@ -373,7 +428,7 @@ final class SchemaBuilderContext {
         for (GeneratedFieldFilter<?> fieldFilter: fieldFilters.values()) {
             schemaBuilder.additionalType(fieldFilter.build(this));
         }
-        for (GraphQLObjectType unmanagedType: unmanagedTypes) {
+        for (GraphQLObjectType unmanagedType: unmanagedTypes.values()) {
             schemaBuilder.additionalType(unmanagedType);
         }
 
@@ -385,9 +440,9 @@ final class SchemaBuilderContext {
     // Query field - the root object of the GraphQL system
     private GraphQLObjectType buildRootQueryObject() {
         final GraphQLObjectType.Builder queryObjectBuilder = newObject();
-        queryObjectBuilder.name("Query");
-        for (GraphQLFieldDefinition entityQueryField: entityQueryFields) {
-            queryObjectBuilder.field(entityQueryField);
+        queryObjectBuilder.name(rootQueryTypeName);
+        for (GraphQLFieldDefinition rootQueryField: rootQueryFields.values()) {
+            queryObjectBuilder.field(rootQueryField);
         }
         return queryObjectBuilder.build();
     }
@@ -399,18 +454,15 @@ final class SchemaBuilderContext {
         for (EntityQueryWiring<?> entityQueryWiring: entityQueryWirings.values()) {
             final FieldCoordinates fieldCoordinates = coordinates(rootQueryObject.getName(), entityQueryWiring.getQueryName());
             if (entityQueryWiring.getQueryType() == EntityQueryType.LIST) {
-                codeRegistry.dataFetcher(fieldCoordinates, new EntityListQueryDataFetcher<>(this, entityQueryWiring.getEntityClass(), entityQueryWiring.getQueryName()));
+                codeRegistry.dataFetcher(fieldCoordinates, new EntityListQueryDataFetcher<>(this, entityQueryWiring.getEntityClass(), entityQueryWiring.getQueryName(), null));
             }
             if (entityQueryWiring.getQueryType() == EntityQueryType.SCALAR_NON_NULL || entityQueryWiring.getQueryType() == EntityQueryType.SCALAR_NULL_ALLOWED) {
-                codeRegistry.dataFetcher(fieldCoordinates, new EntityScalarQueryDataFetcher<>(this, entityQueryWiring.getEntityClass(), entityQueryWiring.getQueryName()));
+                codeRegistry.dataFetcher(fieldCoordinates, new EntityScalarQueryDataFetcher<>(this, entityQueryWiring.getEntityClass(), entityQueryWiring.getQueryName(), null));
             }
         }
 
-        for (Map.Entry<Tuple2<String, String>, DataFetcher<?>> unmanagedDataFetcher: unmanagedDataFetchers.entrySet()) {
-            final String parentTypeName = unmanagedDataFetcher.getKey().v1;
-            final String fieldName = unmanagedDataFetcher.getKey().v2;
-            final DataFetcher<?> dataFetcher = unmanagedDataFetcher.getValue();
-            codeRegistry.dataFetcher(coordinates(parentTypeName, fieldName), dataFetcher);
+        for (Map.Entry<FieldCoordinates, DataFetcher<?>> unmanagedDataFetcher: unmanagedDataFetchers.entrySet()) {
+            codeRegistry.dataFetcher(unmanagedDataFetcher.getKey(), unmanagedDataFetcher.getValue());
         }
 
         return codeRegistry.build();
@@ -418,5 +470,18 @@ final class SchemaBuilderContext {
 
     public <T> T convertInput(TypeLiteral<T> type, Object object) {
         return typeConverter.convertObjectToType(type, object);
+    }
+
+    EntityQueryExecutionListeners getEntityQueryExecutionListeners() {
+        return entityQueryExecutionListeners;
+    }
+
+    SchemaBuilderElementVisibility getSchemaBuilderElementVisibility() {
+        return schemaBuilderElementVisibility;
+    }
+
+    @Override
+    public GraphQLType buildTypeFor(Type type) {
+        return schema.getUnwrappedTypeFor(this, type);
     }
 }

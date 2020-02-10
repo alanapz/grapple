@@ -4,7 +4,7 @@ import org.grapple.core.Chainable;
 import org.grapple.query.EntityField;
 import org.grapple.query.QueryField;
 
-public interface EntityFieldDefinition<X, T> extends Chainable<EntityFieldDefinition<X, T>> {
+public interface EntityFieldDefinition<X, T> extends EntitySchemaElement, Chainable<EntityFieldDefinition<X, T>> {
 
     EntityDefinition<X> getEntity();
 
@@ -12,15 +12,4 @@ public interface EntityFieldDefinition<X, T> extends Chainable<EntityFieldDefini
 
     QueryField<X, T> getQueryableField();
 
-    String getFieldName();
-
-    void setFieldName(String fieldName);
-
-    String getDescription();
-
-    void setDescription(String description);
-
-    String getDeprecationReason();
-
-    void setDeprecationReason(String deprecationReason);
 }

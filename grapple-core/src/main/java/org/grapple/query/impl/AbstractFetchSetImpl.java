@@ -1,9 +1,9 @@
 package org.grapple.query.impl;
 
-import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.query.impl.EntityOrderByImpl.entityOrderBy;
+import static org.grapple.utils.Utils.readOnlyCopy;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -14,10 +14,10 @@ import java.util.function.Function;
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityFilter;
 import org.grapple.query.EntityJoin;
+import org.grapple.query.EntitySortKey;
 import org.grapple.query.FetchSet;
 import org.grapple.query.QueryField;
 import org.grapple.query.SortDirection;
-import org.grapple.utils.EntitySortKey;
 
 abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
 
@@ -41,7 +41,7 @@ abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
 
     @Override
     public Map<EntityJoin<X, ?>, FetchSet<?>> getJoins() {
-        return unmodifiableMap(joins);
+        return readOnlyCopy(joins);
     }
 
     @Override

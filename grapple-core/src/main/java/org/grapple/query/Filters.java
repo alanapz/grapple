@@ -14,7 +14,6 @@ import java.util.Set;
 import java.util.function.Function;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.metamodel.SingularAttribute;
-import org.grapple.utils.QuickFilterBy;
 
 public final class Filters {
 

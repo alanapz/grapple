@@ -1,8 +1,8 @@
 package org.grapple.query.impl;
 
-import static java.util.Collections.unmodifiableMap;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.utils.Utils.coalesce;
+import static org.grapple.utils.Utils.readOnlyCopy;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -52,7 +52,7 @@ final class TabularResultRowImpl implements TabularResultRow {
 
     @Override
     public Map<String, Object> getValues() {
-        return unmodifiableMap(valuesByName);
+        return readOnlyCopy(valuesByName);
     }
 
     <X, T> void setValue(FetchSet<X> fetchSet, EntityField<X, T> field, T value) {

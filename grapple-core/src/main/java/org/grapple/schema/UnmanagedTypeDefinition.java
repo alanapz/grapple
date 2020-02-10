@@ -1,21 +1,26 @@
 package org.grapple.schema;
 
+import java.util.Map;
+import graphql.schema.DataFetcher;
 import org.grapple.core.Chainable;
-import org.grapple.query.EntityField;
-import org.grapple.query.QueryField;
+import org.grapple.core.ElementVisibility;
+import org.grapple.core.Validatable;
+import org.grapple.reflect.TypeLiteral;
 
-public interface UnmanagedTypeDefinition extends Chainable<UnmanagedTypeDefinition> {
+public interface UnmanagedTypeDefinition<T> extends Chainable<UnmanagedTypeDefinition<T>>, Validatable {
 
-    String getTypeName();
+    TypeLiteral<T> getType();
 
-    void setFieldName(String fieldName);
+    ElementVisibility getVisibility();
 
-    String getDescription();
+    void setVisibility(ElementVisibility visibility);
 
-    void setDescription(String description);
+    UnmanagedTypeBuilder getTypeBuilder();
 
-    String getDeprecationReason();
+    void setTypeBuilder(UnmanagedTypeBuilder typeBuilder);
 
-    void setDeprecationReason(String deprecationReason);
+    Map<String, DataFetcher<?>> getDataFetchers();
+
+    void addDataFetcher(String fieldName, DataFetcher<?> dataFetcher);
 
 }

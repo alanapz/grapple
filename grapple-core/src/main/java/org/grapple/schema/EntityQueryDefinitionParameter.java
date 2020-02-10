@@ -19,8 +19,4 @@ public interface EntityQueryDefinitionParameter<T> extends Chainable<EntityQuery
 
     void setRequired(boolean required);
 
-    String getTypeAlias();
-
-    void setTypeAlias(String typeAlias);
-
 }

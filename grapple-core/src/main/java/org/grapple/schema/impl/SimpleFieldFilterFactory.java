@@ -32,14 +32,14 @@ final class SimpleFieldFilterFactory {
 
         final FieldFilterDefinitionImpl<T> filterDefinition = new FieldFilterDefinitionImpl<>(schema, fieldType);
 
-        filterDefinition.addItem(simpleFieldFilterItem("is_null", GraphQLBoolean, (env, queryField, args) -> ((boolean) args) ? Filters.isNull(queryField) : Filters.isNotNull(queryField)));
+        filterDefinition.addItem(simpleFieldFilterItem("isNull", GraphQLBoolean, (env, queryField, args) -> ((boolean) args) ? Filters.isNull(queryField) : Filters.isNotNull(queryField)));
 
         if (isScalar(unwrapNonNull(gqlType)) || isEnum(unwrapNonNull(gqlType))) {
 
             filterDefinition.addItem(simpleFieldFilterItem("is", (GraphQLInputType) unwrapNonNull(gqlType), (env, queryField, args) -> Filters.isEqual(queryField, (T) args)));
-            filterDefinition.addItem(simpleFieldFilterItem("is_not", (GraphQLInputType) unwrapNonNull(gqlType), (env, queryField, args) -> Filters.isNotEqual(queryField, (T) args)));
+            filterDefinition.addItem(simpleFieldFilterItem("isNot", (GraphQLInputType) unwrapNonNull(gqlType), (env, queryField, args) -> Filters.isNotEqual(queryField, (T) args)));
             filterDefinition.addItem(simpleFieldFilterItem("in", GraphQLList.list(unwrapNonNull(gqlType)), (env, queryField, args) -> Filters.contains(queryField, new HashSet<>((Collection<T>) args))));
-            filterDefinition.addItem(simpleFieldFilterItem("not_in", GraphQLList.list(unwrapNonNull(gqlType)), (env, queryField, args) -> Filters.not(Filters.contains(queryField, new HashSet<>((Collection<T>) args)))));
+            filterDefinition.addItem(simpleFieldFilterItem("notIn", GraphQLList.list(unwrapNonNull(gqlType)), (env, queryField, args) -> Filters.not(Filters.contains(queryField, new HashSet<>((Collection<T>) args)))));
 
             // Numeric types have < <= > >=
             if (fieldType.isSubtypeOf(Comparable.class) && !fieldType.isSubtypeOf(String.class) && !fieldType.isSubtypeOf(Boolean.class) && !fieldType.isSubtypeOf(Enum.class)) {
@@ -52,9 +52,9 @@ final class SimpleFieldFilterFactory {
             // String types have like, ulike
             if (fieldType.isSubtypeOf(String.class)) {
                 filterDefinition.addItem(simpleFieldFilterItem("like", GraphQLString, (env, queryField, args) -> Filters.like((QueryField<Object, String>) queryField, (String) args)));
-                filterDefinition.addItem(simpleFieldFilterItem("not_like", GraphQLString, (env, queryField, args) -> Filters.not(Filters.like((QueryField<Object, String>) queryField, (String) args))));
-                filterDefinition.addItem(simpleFieldFilterItem("ilike", GraphQLString, (env, queryField, args) -> Filters.likeCaseInsensitive((QueryField<Object, String>) queryField, (String) args)));
-                filterDefinition.addItem(simpleFieldFilterItem("not_ilike", GraphQLString, (env, queryField, args) -> Filters.not(Filters.likeCaseInsensitive((QueryField<Object, String>) queryField, (String) args))));
+                filterDefinition.addItem(simpleFieldFilterItem("notLike", GraphQLString, (env, queryField, args) -> Filters.not(Filters.like((QueryField<Object, String>) queryField, (String) args))));
+                filterDefinition.addItem(simpleFieldFilterItem("likeCaseInsensitive", GraphQLString, (env, queryField, args) -> Filters.likeCaseInsensitive((QueryField<Object, String>) queryField, (String) args)));
+                filterDefinition.addItem(simpleFieldFilterItem("notLikeCaseInsensitive", GraphQLString, (env, queryField, args) -> Filters.not(Filters.likeCaseInsensitive((QueryField<Object, String>) queryField, (String) args))));
             }
         }
         return filterDefinition;

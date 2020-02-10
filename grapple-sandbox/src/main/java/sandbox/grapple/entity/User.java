@@ -1,7 +1,13 @@
 package sandbox.grapple.entity;
 
-import javax.persistence.*;
 import java.io.Serializable;
+import java.time.Instant;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
 
 @Entity
 @Table(name = "user")
@@ -12,6 +18,8 @@ public class User implements Serializable {
     private Company company;
 
     private String displayName;
+
+    private Instant lastLoginDate;
 
     private static final long serialVersionUID = 1L;
 
@@ -42,6 +50,15 @@ public class User implements Serializable {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    @Column(name = "last_login_date")
+    public Instant getLastLoginDate() {
+        return lastLoginDate;
+    }
+
+    public void setLastLoginDate(Instant lastLoginDate) {
+        this.lastLoginDate = lastLoginDate;
     }
 }
 

@@ -32,6 +32,8 @@ import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Selection;
 import javax.persistence.criteria.SetJoin;
 import javax.persistence.criteria.Subquery;
+import javax.persistence.metamodel.SingularAttribute;
+import org.grapple.query.EntityContext;
 import org.grapple.query.QueryBuilder;
 import org.grapple.query.SortDirection;
 
@@ -67,6 +69,16 @@ final class QueryBuilderImpl implements QueryBuilder {
     public Expression<Boolean> toExpression(Predicate predicate) {
         requireNonNull(predicate, "predicate");
         return this.<Boolean>selectCase().when(predicate, trueLiteral()).otherwise(falseLiteral());
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> Expression<T> wrapPredicateIfNecessary(Expression<T> expression) {
+        requireNonNull(expression, "expression");
+        if (expression instanceof Predicate) {
+            return (Expression<T>) toExpression((Predicate) expression);
+        }
+        return expression;
     }
 
     @Override
@@ -322,23 +334,35 @@ final class QueryBuilderImpl implements QueryBuilder {
     @Override
     @SuppressWarnings("squid:S1221") // Methods should not be named "tostring", "hashcode" or "equal"
     public Predicate equal(Expression<?> x, Expression<?> y) {
-        return criteriaBuilder.equal(x, y);
+        requireNonNull(x);
+        requireNonNull(y);
+        return criteriaBuilder.equal(wrapPredicateIfNecessary(x), wrapPredicateIfNecessary(y));
     }
 
     @Override
     @SuppressWarnings("squid:S1221") // Methods should not be named "tostring", "hashcode" or "equal"
     public Predicate equal(Expression<?> x, Object y) {
-        return criteriaBuilder.equal(x, y);
+        requireNonNull(x);
+        return criteriaBuilder.equal(wrapPredicateIfNecessary(x), y);
+    }
+
+    @Override
+    @SuppressWarnings("squid:S1221") // Methods should not be named "tostring", "hashcode" or "equal"
+    public <X, T> Predicate equal(SingularAttribute<X, T> attribute, EntityContext<X> left, EntityContext<X> right) {
+        return equal(left.get(attribute), right.get(attribute));
     }
 
     @Override
     public Predicate notEqual(Expression<?> x, Expression<?> y) {
-        return criteriaBuilder.notEqual(x, y);
+        requireNonNull(x);
+        requireNonNull(y);
+        return criteriaBuilder.notEqual(wrapPredicateIfNecessary(x), wrapPredicateIfNecessary(y));
     }
 
     @Override
     public Predicate notEqual(Expression<?> x, Object y) {
-        return criteriaBuilder.notEqual(x, y);
+        requireNonNull(x);
+        return criteriaBuilder.notEqual(wrapPredicateIfNecessary(x), y);
     }
 
     @Override
@@ -705,6 +729,25 @@ final class QueryBuilderImpl implements QueryBuilder {
     @Override
     public Expression<String> concat(String x, Expression<String> y) {
         return criteriaBuilder.concat(x, y);
+    }
+
+    @Override
+    public Expression<String> concat(List<Expression<String>> values) {
+        requireNonNull(values);
+        if (values.isEmpty()) {
+            return literal("");
+        }
+        if (values.size() == 1) {
+            return values.get(0);
+        }
+        if (values.size() == 2) {
+            return concat(values.get(0), values.get(1));
+        }
+        /* mutable */ Expression<String> current = literal("");
+        for (Expression<String> value : values) {
+            current = concat(current, value);
+        }
+        return current;
     }
 
     @Override

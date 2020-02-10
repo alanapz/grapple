@@ -1,12 +1,13 @@
 package org.grapple.schema.impl;
 
-import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.EntityQueryUtils.buildAndRegisterEntityQuery;
+import static org.grapple.utils.Utils.readOnlyCopy;
 
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.grapple.core.ElementVisibility;
 import org.grapple.core.Validatable;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntityQueryDefinition;
@@ -29,6 +30,8 @@ final class UserEntityQueryDefinitionImpl<X> implements EntityQueryDefinitionImp
     private String description;
 
     private String deprecationReason;
+
+    private ElementVisibility visibility;
 
     private final Set<EntityQueryDefinitionParameterImpl<?>> parameters = new NoDuplicatesSet<>();
 
@@ -56,12 +59,12 @@ final class UserEntityQueryDefinitionImpl<X> implements EntityQueryDefinitionImp
     }
 
     @Override
-    public String getQueryName() {
+    public String getName() {
         return queryName;
     }
 
     @Override
-    public void setQueryName(String queryName) {
+    public void setName(String queryName) {
         requireNonNull(queryName, "queryName");
         this.queryName = queryName;
     }
@@ -87,8 +90,18 @@ final class UserEntityQueryDefinitionImpl<X> implements EntityQueryDefinitionImp
     }
 
     @Override
+    public ElementVisibility getVisibility() {
+        return visibility;
+    }
+
+    @Override
+    public void setVisibility(ElementVisibility visibility) {
+        this.visibility = visibility;
+    }
+
+    @Override
     public Set<? extends EntityQueryDefinitionParameter<?>> getParameters() {
-        return unmodifiableSet(parameters);
+        return readOnlyCopy(parameters);
     }
 
     @Override

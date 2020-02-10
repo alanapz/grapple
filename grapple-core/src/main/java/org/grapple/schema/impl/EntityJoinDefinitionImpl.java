@@ -8,7 +8,7 @@ import static org.grapple.schema.impl.SchemaUtils.wrapNonNullIfNecessary;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import graphql.schema.GraphQLFieldDefinition;
-import graphql.schema.GraphQLObjectType;
+import org.grapple.core.ElementVisibility;
 import org.grapple.query.EntityJoin;
 import org.grapple.query.EntityMetadataKeys;
 import org.grapple.schema.EntityJoinDefinition;
@@ -28,6 +28,8 @@ final class EntityJoinDefinitionImpl<X, Y> implements EntityJoinDefinition<X, Y>
 
     private String deprecationReason;
 
+    private ElementVisibility visibility;
+
     EntityJoinDefinitionImpl(EntitySchemaImpl schema, EntityDefinitionImpl<X> entity, EntityJoin<X, Y> join) {
         this.schema = requireNonNull(schema, "schema");
         this.entity = requireNonNull(entity, "entity");
@@ -36,6 +38,7 @@ final class EntityJoinDefinitionImpl<X, Y> implements EntityJoinDefinition<X, Y>
         this.fieldName = join.getName();
         this.description = join.getMetadata(EntityMetadataKeys.Description);
         this.deprecationReason = join.getMetadata(EntityMetadataKeys.DeprecationReason);
+        this.visibility = join.getMetadata(EntityMetadataKeys.Visibility);
     }
 
     @Override
@@ -54,12 +57,12 @@ final class EntityJoinDefinitionImpl<X, Y> implements EntityJoinDefinition<X, Y>
     }
 
     @Override
-    public String getFieldName() {
+    public String getName() {
         return fieldName;
     }
 
     @Override
-    public void setFieldName(String fieldName) {
+    public void setName(String fieldName) {
         requireNonNull(fieldName, "fieldName");
         this.fieldName = fieldName;
     }
@@ -84,22 +87,32 @@ final class EntityJoinDefinitionImpl<X, Y> implements EntityJoinDefinition<X, Y>
         this.deprecationReason = deprecationReason;
     }
 
-    void build(SchemaBuilderContext ctx, GraphQLObjectType.Builder entityBuilder) {
+    @Override
+    public ElementVisibility getVisibility() {
+        return visibility;
+    }
+
+    @Override
+    public void setVisibility(ElementVisibility visibility) {
+        this.visibility = visibility;
+    }
+
+    GraphQLFieldDefinition build(SchemaBuilderContext ctx) {
         final EntityDefinitionImpl<?> targetEntity = schema.getEntityFor(join.getResultType());
-
         if (targetEntity == null) {
-            return;
+            // Ignore joins to entites not found
+            return null;
         }
-
-        final GraphQLFieldDefinition.Builder fieldBuilder = newFieldDefinition()
+        ctx.addEntitySelectionWiring(entitySelectionJoinWiring(entity.getEntityClass(), fieldName, getJoinedEntity().getEntityClass(), join));
+        if (visibility != null) {
+            ctx.getSchemaBuilderElementVisibility().setFieldVisibility(entity.getName(), fieldName, visibility);
+        }
+        return newFieldDefinition()
                 .name(fieldName)
                 .type(wrapNonNullIfNecessary(join.getResultType(), targetEntity.getEntityTypeRef()))
                 .description(description)
-                .deprecate(deprecationReason);
-
-        entityBuilder.field(fieldBuilder);
-
-        ctx.addEntitySelectionWiring(entitySelectionJoinWiring(entity.getEntityClass(), fieldName, getJoinedEntity().getEntityClass(), join));
+                .deprecate(deprecationReason)
+                .build();
     }
 
     @Override

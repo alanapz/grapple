@@ -1,9 +1,14 @@
 package org.grapple.utils;
 
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.unmodifiableMap;
+import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +41,7 @@ public final class Utils {
             return null;
         }
         if (values.length == 0) {
-            return Collections.emptySet();
+            return emptySet();
         }
         if (values.length == 1) {
             return Collections.singleton(values[0]);
@@ -131,6 +136,14 @@ public final class Utils {
     @SuppressWarnings("unchecked")
     public static <T, U> Object captureFunction(Function<T, U> function, Object value) {
         return function.apply((T) value);
+    }
+
+    public static <T> Set<T> readOnlyCopy(Set<T> source) {
+        return (source != null ? (!source.isEmpty() ? unmodifiableSet(new HashSet<>(source)) : emptySet()) : null);
+    }
+
+    public static <K, V> Map<K, V> readOnlyCopy(Map<K, V> source) {
+        return (source != null ? (!source.isEmpty() ? unmodifiableMap(new HashMap<>(source)) : emptyMap()) : null);
     }
 
     @FunctionalInterface

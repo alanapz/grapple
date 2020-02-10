@@ -22,7 +22,7 @@ import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
 import org.grapple.query.SortDirection;
 import org.grapple.reflect.TypeLiteral;
-import org.grapple.schema.EntityCustomFilterResolver;
+import org.grapple.schema.EntityFilterItemResolver;
 import org.grapple.schema.EntityQueryResolver;
 import org.grapple.schema.EntityQueryType;
 import org.grapple.utils.UnexpectedException;
@@ -121,7 +121,7 @@ final class RuntimeWiring {
         EntityFilter<X> resolveFilter(SchemaBuilderContext ctx, DataFetchingEnvironment environment, FetchSet<X> fetchSet, Object rawArgs);
     }
 
-    static <X, T> EntityFilterWiring<X> entityFilterCustomWiring(Class<X> entityClass, String fieldName, TypeLiteral<T> fieldType, EntityCustomFilterResolver<X, T> resolver) {
+    static <X, T> EntityFilterWiring<X> entityFilterCustomWiring(Class<X> entityClass, String fieldName, TypeLiteral<T> fieldType, EntityFilterItemResolver<X, T> resolver) {
         requireNonNull(entityClass, "entityClass");
         requireNonNull(fieldName, "fieldName");
         requireNonNull(fieldType, "fieldType");

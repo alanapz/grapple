@@ -1,8 +1,8 @@
 package org.grapple.utils;
 
-import java.util.function.Supplier;
-
 import static java.util.Objects.requireNonNull;
+
+import java.util.function.Supplier;
 
 public final class LazyValue<T> implements Supplier<T> {
 
@@ -17,7 +17,7 @@ public final class LazyValue<T> implements Supplier<T> {
     }
 
     @Override
-    public T get() {
+    public synchronized T get() {
         if (!this.initialised) {
             this.value = supplier.get();
             this.initialised = true;
@@ -30,6 +30,7 @@ public final class LazyValue<T> implements Supplier<T> {
     }
 
     public static <T> LazyValue<T> of(Supplier<T> supplier) {
+        requireNonNull(supplier, "supplier");
         return new LazyValue<>(supplier);
     }
 }

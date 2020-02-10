@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.grapple.schema.DefinitionImportException;
 import org.grapple.utils.NoDuplicatesMap;
@@ -84,37 +85,45 @@ public final class ReflectUtils {
         // Returns the method and all of it's declarations (in all superclasses and interfaces)
         final Set<Method> allMethods = new LinkedHashSet<>();
         for (Class<?> clazz: getAllSuperClassesOf(method.getDeclaringClass())) {
-            try {
-                allMethods.add(clazz.getDeclaredMethod(method.getName(), method.getParameterTypes()));
-            } catch (NoSuchMethodException e) {
-                // Skip
-            }
+            lookupDeclaredMethod(clazz, method.getName(), method.getParameterTypes()).ifPresent(allMethods::add);
         }
         return allMethods;
     }
 
-    public static <A extends Annotation> A searchMethodAnnotation(Method initial, Class<A> aClazz) {
+    public static Optional<Method> lookupDeclaredMethod(Class<?> clazz, String name, Class<?>[] parameterTypes) {
+        requireNonNull(clazz, "clazz");
+        requireNonNull(name, "name");
+        requireNonNull(parameterTypes, "parameterTypes");
+        try {
+            return Optional.of(clazz.getMethod(name, parameterTypes));
+        }
+        catch (NoSuchMethodException e) {
+            return Optional.empty();
+        }
+    }
+
+    public static <A extends Annotation> Optional<A> searchMethodAnnotation(Method initial, Class<A> aClazz) {
         requireNonNull(initial, "initial");
         requireNonNull(aClazz, "aClazz");
         for (Method method: getAllDefinitionsOf(initial)) {
             final A annotation = method.getDeclaredAnnotation(aClazz);
             if (annotation != null) {
-                return annotation;
+                return Optional.of(annotation);
             }
         }
-        return null;
+        return Optional.empty();
     }
 
-    public static <A extends Annotation> A searchParameterAnnotation(Method initial, int index, Class<A> aClazz) {
+    public static <A extends Annotation> Optional<A> searchParameterAnnotation(Method initial, int index, Class<A> aClazz) {
         requireNonNull(initial, "initial");
         requireNonNull(aClazz, "aClazz");
         for (Method method: getAllDefinitionsOf(initial)) {
             final A annotation = method.getParameters()[index].getDeclaredAnnotation(aClazz);
             if (annotation != null) {
-                return annotation;
+                return Optional.of(annotation);
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     public static Set<Class<?>> getAllTypesAnnotatedWith(Set<String> packageNames, Class<? extends Annotation> annotation, boolean includeInherited) {

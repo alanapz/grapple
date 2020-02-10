@@ -3,16 +3,15 @@ package org.grapple.query.impl;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
-import java.util.Objects;
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Order;
 import org.grapple.query.EntityContext;
 import org.grapple.query.EntityOrderBy;
+import org.grapple.query.EntitySortKey;
 import org.grapple.query.FetchSet;
 import org.grapple.query.QueryBuilder;
 import org.grapple.query.QueryField;
 import org.grapple.query.SortDirection;
-import org.grapple.utils.EntitySortKey;
 
 final class EntityOrderByImpl<X> implements EntityOrderBy<X> {
 
@@ -62,16 +61,16 @@ final class EntityOrderByImpl<X> implements EntityOrderBy<X> {
     }
 
     static <X> EntityOrderByImpl<X> entityOrderBy(FetchSet<X> fetchSet, SortDirection direction, QueryField<X, ?> field) {
-        Objects.requireNonNull(fetchSet, "fetchSet");
-        Objects.requireNonNull(direction, "direction");
-        Objects.requireNonNull(field, "field");
-        return new EntityOrderByImpl<>(fetchSet, direction, (ctx, queryBuilder) -> field.getOrderBy(ctx, queryBuilder));
+        requireNonNull(fetchSet, "fetchSet");
+        requireNonNull(direction, "direction");
+        requireNonNull(field, "field");
+        return new EntityOrderByImpl<>(fetchSet, direction, field::getOrderBy);
     }
 
     static <X> EntityOrderByImpl<X> entityOrderBy(FetchSet<X> fetchSet, SortDirection direction, EntitySortKey<X> sortKey) {
-        Objects.requireNonNull(fetchSet, "fetchSet");
-        Objects.requireNonNull(direction, "direction");
-        Objects.requireNonNull(sortKey, "v");
+        requireNonNull(fetchSet, "fetchSet");
+        requireNonNull(direction, "direction");
+        requireNonNull(sortKey, "sortKey");
         return new EntityOrderByImpl<>(fetchSet, direction, (ctx, queryBuilder) -> sortKey.getPath(ctx));
     }
 }

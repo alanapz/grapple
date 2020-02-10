@@ -4,9 +4,13 @@ import static org.grapple.query.EntityFieldBuilder.attributeField;
 import static org.grapple.query.EntityFieldBuilder.attributeJoin;
 import static org.grapple.query.EntityFieldBuilder.expressionJoin;
 import static org.grapple.query.EntityFieldBuilder.literalField;
+import static org.grapple.query.EntityFieldBuilder.nonQueryField;
 import static org.grapple.query.EntityResultType.nullAllowed;
 
+import app.CustomObject;
+import org.grapple.metadata.FieldNotExported;
 import org.grapple.query.EntityJoin;
+import org.grapple.query.NonQueryField;
 import org.grapple.query.QueryDefinitions;
 import org.grapple.query.QueryField;
 import sandbox.grapple.entity.Company;
@@ -23,6 +27,7 @@ public class CompanyField {
             .name("idAsLongL")
             .resultType(Long.class));
 
+    @FieldNotExported
     public static final QueryField<Company, Long> IdAsPrimitiveLong = literalField(fieldBuilder -> fieldBuilder
             .name("idAsLongP")
             .resultType(long.class)
@@ -44,4 +49,10 @@ public class CompanyField {
             .expression((ctx, queryBuilder) -> {
                 return ctx.joinUnshared(Company_.users, tbl -> queryBuilder.equal(tbl.get(User_.id), queryBuilder.literal(99)));
             }));
+
+    @FieldNotExported
+    public static final NonQueryField<Company, CustomObject> CustomObjectX = nonQueryField(fieldBuilder -> fieldBuilder
+        .name("custom")
+        .resultType(nullAllowed(CustomObject.class))
+        .resolver((ctx, queryBuilder) -> null));
 }

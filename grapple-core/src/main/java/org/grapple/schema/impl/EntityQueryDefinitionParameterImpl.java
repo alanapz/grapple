@@ -19,8 +19,6 @@ final class EntityQueryDefinitionParameterImpl<T> implements EntityQueryDefiniti
 
     private boolean required;
 
-    private String typeAlias;
-
     EntityQueryDefinitionParameterImpl(TypeLiteral<T> type) {
         this.type = requireNonNull(type, "type");
     }
@@ -59,16 +57,6 @@ final class EntityQueryDefinitionParameterImpl<T> implements EntityQueryDefiniti
     @Override
     public void setRequired(boolean required) {
         this.required = required;
-    }
-
-    @Override
-    public String getTypeAlias() {
-        return typeAlias;
-    }
-
-    @Override
-    public void setTypeAlias(String typeAlias) {
-        this.typeAlias = typeAlias;
     }
 
     @Override

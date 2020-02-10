@@ -7,6 +7,7 @@ import static java.util.Objects.requireNonNull;
 import static org.jooq.lambda.Seq.seq;
 
 import graphql.language.Field;
+import graphql.language.Node;
 import graphql.language.SelectionSet;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.GraphQLList;
@@ -48,13 +49,18 @@ public final class SchemaUtils {
             if (selectionSet == null) {
                 return null;
             }
-            final Field nextField = seq(selectionSet.getChildren()).filter(Field.class::isInstance).cast(Field.class).findFirst(child -> path.equals(child.getName())).orElse(null);
+            final Field nextField = seq(selectionSet.getChildren()).filter(SchemaUtils::isQueryableField).cast(Field.class).findFirst(child -> path.equals(child.getName())).orElse(null);
             if (nextField == null) {
                 return null;
             }
             field = nextField;
         }
         return field.getSelectionSet();
+    }
+
+    static boolean isQueryableField(Node<?> node) {
+        // Skip introspection types (types beginning with__)
+        return (node instanceof Field) && !((Field) node).getName().startsWith("__");
     }
 
     static <X> RootFetchSet<X> buildFetchSet(DataFetchingEnvironment environment, String queryName, Class<X> entityClass) {

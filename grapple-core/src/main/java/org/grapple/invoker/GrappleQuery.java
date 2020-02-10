@@ -14,7 +14,7 @@ public @interface GrappleQuery {
 
     String value() default "";
 
-    EntityQueryType type() default EntityQueryType.LIST;
+    EntityQueryType type() default EntityQueryType.DEFAULT;
 
     String description() default "";
 

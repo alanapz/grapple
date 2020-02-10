@@ -5,11 +5,11 @@ import org.grapple.query.QueryParameter;
 
 public class GraphQLQueryParameters {
 
-    public static final QueryParameter<String> QueryName = new QueryParameter<>();
+    public static final QueryParameter<String> QueryName = new QueryParameter<>("queryName");
 
-    public static final QueryParameter<DataFetchingEnvironment> Environment = new QueryParameter<>();
+    public static final QueryParameter<DataFetchingEnvironment> Environment = new QueryParameter<>("environment");
 
-    public static final QueryParameter<Object> QuerySource = new QueryParameter<>();
+    public static final QueryParameter<Object> QuerySource = new QueryParameter<>("querySource");
 
     private GraphQLQueryParameters() {
 

@@ -1,17 +1,15 @@
 package org.grapple.schema;
 
-import java.lang.reflect.Type;
-import java.util.Set;
-import graphql.schema.DataFetcher;
-import graphql.schema.GraphQLObjectType;
-import graphql.schema.GraphQLSchema;
-import graphql.schema.GraphQLType;
+import java.util.function.Consumer;
 import org.grapple.core.Chainable;
 import org.grapple.reflect.TypeConverter;
+import org.grapple.reflect.TypeLiteral;
 
 public interface EntitySchema extends Chainable<EntitySchema> {
 
     void addSchemaListener(EntitySchemaListener listener);
+
+    void addEntityQueryExecutionListener(EntityQueryExecutionListener listener);
 
     <X> EntityDefinition<X> getEntity(Class<X> entityClass);
 
@@ -25,17 +23,13 @@ public interface EntitySchema extends Chainable<EntitySchema> {
 
     void setEntityDefaultNameGenerator(EntityDefaultNameGenerator entityDefaultNameGenerator);
 
-    void importDefinitions(Set<String> packageNames, EntityDefinitionScannerCallback scannerCallback);
-
-    void importQueries(Object instance, EntityQueryScannerCallback scannerCallback);
+    EntitySchemaScanner buildEntitySchemaScanner(EntitySchemaScannerCallback scannerCallback);
 
     TypeConverter getTypeConverter();
 
-    void addUnmanagedType(GraphQLObjectType type);
+    void addUnmanagedQuery(String queryAlias, Consumer<UnmanagedQueryDefinition> consumer);
 
-    void addUnmanagedDataFetcher(String typeName, String fieldName, DataFetcher<?> dataFetcher);
-
-    void addTypeMapping(Type javaType, GraphQLType graphQLType);
+    <T> void addUnmanagedType(TypeLiteral<T> type, Consumer<UnmanagedTypeDefinition<T>> consumer);
 
 //    void addTypeAlias(String typeAliasName, GraphQLType type);
 
@@ -45,5 +39,5 @@ public interface EntitySchema extends Chainable<EntitySchema> {
 
     // <X> void addEntityQueryInvoker(String name, Class<X> entityClass, Class<QueryParameters<X>> invokerParams, QueryResolver<X> queryResolver);
 
-    GraphQLSchema generate();
+    EntitySchemaResult generate();
 }

@@ -1,8 +1,8 @@
 package org.grapple.query.impl;
 
 import static java.util.Collections.unmodifiableList;
-import static java.util.Collections.unmodifiableMap;
 import static java.util.Objects.requireNonNull;
+import static org.grapple.utils.Utils.readOnlyCopy;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,14 +14,15 @@ import org.grapple.query.EntityField;
 import org.grapple.query.EntityFilter;
 import org.grapple.query.EntityJoin;
 import org.grapple.query.EntityOrderBy;
+import org.grapple.query.EntityResultList;
 import org.grapple.query.EntityRoot;
+import org.grapple.query.EntitySortKey;
 import org.grapple.query.FetchSet;
 import org.grapple.query.QueryField;
 import org.grapple.query.QueryParameter;
 import org.grapple.query.QueryResultList;
 import org.grapple.query.RootFetchSet;
 import org.grapple.query.SortDirection;
-import org.grapple.utils.EntitySortKey;
 
 final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootFetchSet<X> {
 
@@ -112,7 +113,7 @@ final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootF
     }
 
     Map<QueryParameter<?>, Object> getQueryParameters() {
-        return unmodifiableMap(queryParameters);
+        return readOnlyCopy(queryParameters);
     }
 
     @Override
@@ -127,6 +128,11 @@ final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootF
         requireNonNull(entityManager, "entityManager");
         requireNonNull(entityRoot, "entityRoot");
         return new ExecutionContext(entityManager).execute(entityRoot, this);
+    }
+
+    @Override
+    public EntityResultList<X> entityQuery(EntityManager entityManager, EntityRoot<X> entityRoot) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

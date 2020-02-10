@@ -20,6 +20,7 @@ import javax.persistence.metamodel.SetAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import org.grapple.query.EntityContext;
 import org.grapple.query.EntityField;
+import org.grapple.query.EntityFieldBuilder.ExpressionResolver;
 import org.grapple.query.EntityJoin;
 import org.grapple.query.NonQueryField;
 import org.grapple.query.NonQuerySelection;
@@ -28,6 +29,7 @@ import org.grapple.query.QueryField;
 import org.grapple.query.QueryParameter;
 import org.grapple.utils.LazyValue;
 import org.grapple.utils.NoDuplicatesMap;
+import org.grapple.utils.UnexpectedException;
 
 abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
 
@@ -47,7 +49,7 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
 
     private final Map<Attribute<X, ?>, AttributeJoinImpl<?>> sharedJoins = new NoDuplicatesMap<>();
 
-    private final Map<EntityField<X, ?>, NonQuerySelection<X, ?>> nonQuerySelections = new NoDuplicatesMap<>();
+    private final Map<EntityField<X, ?>, NonQuerySelection<?>> nonQuerySelections = new NoDuplicatesMap<>();
 
     AbstractEntityContextImpl(RootFetchSetImpl<?> rootFetchSet, QueryWrapper queryWrapper, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity) {
         this.rootFetchSet = requireNonNull(rootFetchSet, "rootFetchSet");
@@ -75,6 +77,9 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
             return existing;
         }
         final Expression<T> expression = selection.getExpression(this, queryBuilder);
+        if (expression instanceof Predicate) {
+            throw new UnexpectedException("Unexpected predicate");
+        }
         selections.put(selection, expression);
         return expression;
     }
@@ -152,15 +157,23 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    public <T> NonQuerySelection<X, T> addNonQuerySelection(NonQueryField<X, T> nonQueryField) {
+    public <T> Expression<T> addSelection(ExpressionResolver<X, T> resolver) {
+        requireNonNull(resolver, "resolver");
+        final Expression<T> expression = resolver.get(this, queryBuilder);
+        queryWrapper.select(expression);
+        return expression;
+    }
+
+    @Override
+    public <T> NonQuerySelection<T> addNonQuerySelection(NonQueryField<X, T> nonQueryField) {
         requireNonNull(nonQueryField, "nonQueryField");
-        final @SuppressWarnings("unchecked") NonQuerySelection<X, T> existing = (NonQuerySelection<X, T>) nonQuerySelections.get(nonQueryField);
+        final @SuppressWarnings("unchecked") NonQuerySelection<T> existing = (NonQuerySelection<T>) nonQuerySelections.get(nonQueryField);
         if (existing != null) {
             return existing;
         }
         // ATTENTION: boundResolver must be completely initialised here- do not "optimise" following line
         // Make sure the get() happens outside lambda
-        final NonQuerySelection<X, T> nonQuerySelection = nonQueryField.getResolver().get(AbstractEntityContextImpl.this, queryBuilder)::apply;
+        final NonQuerySelection<T> nonQuerySelection = nonQueryField.getResolver().get(AbstractEntityContextImpl.this, queryBuilder)::apply;
         nonQuerySelections.put(nonQueryField, nonQuerySelection);
         return nonQuerySelection;
     }

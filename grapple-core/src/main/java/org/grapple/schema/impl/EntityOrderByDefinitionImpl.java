@@ -72,8 +72,8 @@ final class EntityOrderByDefinitionImpl<X> implements EntityOrderByDefinition<X>
     private <T> void buildFieldDefinition(SchemaBuilderContext ctx, GraphQLInputObjectType.Builder builder, EntityFieldDefinition<X, T> field) {
         final QueryField<X, T> queryField = field.getQueryableField();
         if (queryField != null) {
-            builder.field(newInputObjectField().name(field.getFieldName()).type((GraphQLInputType) unwrapNonNull(ctx.getUnwrappedTypeFor(SortDirection.class))));
-            ctx.addEntityOrderByWiring(entityOrderByFieldWiring(parent.getEntityClass(), field.getFieldName(), queryField));
+            builder.field(newInputObjectField().name(field.getName()).type((GraphQLInputType) unwrapNonNull(ctx.getUnwrappedTypeFor(SortDirection.class))));
+            ctx.addEntityOrderByWiring(entityOrderByFieldWiring(parent.getEntityClass(), field.getName(), queryField));
         }
     }
 
@@ -84,8 +84,8 @@ final class EntityOrderByDefinitionImpl<X> implements EntityOrderByDefinition<X>
         if (joinedEntity != null) {
             final EntityOrderByDefinitionImpl<?> joinedOrderBy = ctx.getEntityOrderBy(joinedEntity);
             if (joinedOrderBy != null) {
-                builder.field(newInputObjectField().name(join.getFieldName()).type(joinedOrderBy.getTypeRef()));
-                ctx.addEntityOrderByWiring(entityOrderByJoinWiring(parent.getEntityClass(), joinedEntity.getEntityClass(), join.getFieldName(), join.getJoin()));
+                builder.field(newInputObjectField().name(join.getName()).type(joinedOrderBy.getTypeRef()));
+                ctx.addEntityOrderByWiring(entityOrderByJoinWiring(parent.getEntityClass(), joinedEntity.getEntityClass(), join.getName(), join.getJoin()));
             }
         }
     }

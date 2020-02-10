@@ -7,6 +7,7 @@ import javax.persistence.EntityManager;
 import org.grapple.invoker.GrappleQuery;
 import org.grapple.query.Filters;
 import org.grapple.query.QueryResultList;
+import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
 import org.grapple.schema.EntityQueryType;
 import sandbox.grapple.UserField;
@@ -25,15 +26,15 @@ public class UserService {
         return fetches.execute(entityManager, entityRoot(User.class));
     }
 
-    @GrappleQuery(value = "getCurrentUser", type = EntityQueryType.SCALAR_NON_NULL)
+    @GrappleQuery(value = "getCurrentUser")
     public QueryResultList<User> listUsersX(RootFetchSet<User> fetches, Set<Integer> userIds) {
         return fetches.execute(entityManager, entityRoot(User.class));
     }
 
-    @GrappleQuery(value = "getOptionalCurrentUser", type = EntityQueryType.SCALAR_NULL_ALLOWED)
-    public QueryResultList<User> listUsersY(RootFetchSet<User> fetches, int userId) {
+    @GrappleQuery(value = "getOptionalCurrentUser")
+    public QueryResultRow<User> listUsersY(RootFetchSet<User> fetches, int userId) {
         fetches.filter(Filters.isEqual(UserField.Id, userId));
-        return fetches.execute(entityManager, entityRoot(User.class));
+        return fetches.execute(entityManager, entityRoot(User.class)).getUniqueResult().orElse(null);
     }
 
 }

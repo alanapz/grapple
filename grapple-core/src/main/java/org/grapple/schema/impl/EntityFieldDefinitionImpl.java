@@ -3,19 +3,21 @@ package org.grapple.schema.impl;
 import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
 import static graphql.schema.GraphQLTypeUtil.isScalar;
 import static graphql.schema.GraphQLTypeUtil.unwrapNonNull;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.entitySelectionFieldWiring;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
 import graphql.schema.GraphQLFieldDefinition;
-import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
+import org.grapple.core.ElementVisibility;
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityMetadataKeys;
 import org.grapple.query.QueryField;
 import org.grapple.schema.EntityDefinition;
 import org.grapple.schema.EntityFieldDefinition;
+import org.grapple.utils.UnexpectedException;
 import org.grapple.utils.Utils;
 
 final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, T> {
@@ -32,6 +34,8 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
 
     private String deprecationReason;
 
+    private ElementVisibility visibility;
+
     EntityFieldDefinitionImpl(EntitySchemaImpl schema, EntityDefinitionImpl<X> entity, EntityField<X, T> field) {
         this.schema = requireNonNull(schema, "schema");
         this.entity = requireNonNull(entity, "entity");
@@ -40,6 +44,7 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
         this.fieldName = field.getName();
         this.description = field.getMetadata(EntityMetadataKeys.Description);
         this.deprecationReason = field.getMetadata(EntityMetadataKeys.DeprecationReason);
+        this.visibility = field.getMetadata(EntityMetadataKeys.Visibility);
     }
 
     @Override
@@ -58,12 +63,12 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
     }
 
     @Override
-    public String getFieldName() {
+    public String getName() {
         return fieldName;
     }
 
     @Override
-    public void setFieldName(String fieldName) {
+    public void setName(String fieldName) {
         requireNonNull(fieldName, "fieldName");
         this.fieldName = fieldName;
     }
@@ -88,25 +93,37 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
         this.deprecationReason = deprecationReason;
     }
 
-    void build(SchemaBuilderContext ctx, GraphQLObjectType.Builder entityBuilder) {
+    @Override
+    public ElementVisibility getVisibility() {
+        return visibility;
+    }
 
-        final GraphQLOutputType resultType = schema.getResultTypeFor(ctx, field.getResultType());
+    @Override
+    public void setVisibility(ElementVisibility visibility) {
+        this.visibility = visibility;
+    }
 
-        // Ignore unmapped types
-        if (resultType == null) {
-            return;
+    GraphQLFieldDefinition build(SchemaBuilderContext ctx) {
+        // Make sure are not an entity type !
+        if (schema.getEntityFor(field.getResultType()) != null) {
+            throw new UnexpectedException(format("Field: %s.%s is an entity type (must use join instead of field)", entity.getEntityClass().getName(), field.getName()));
         }
 
-        final GraphQLFieldDefinition.Builder fieldBuilder = newFieldDefinition()
+        final GraphQLOutputType resultType = schema.getResultTypeFor(ctx, field.getResultType());
+        if (resultType == null) {
+            // Ignore unmapped types
+            return null;
+        }
+        ctx.addEntitySelectionWiring(entitySelectionFieldWiring(entity.getEntityClass(), fieldName, field));
+        if (visibility != null) {
+            ctx.getSchemaBuilderElementVisibility().setFieldVisibility(entity.getName(), fieldName, visibility);
+        }
+        return newFieldDefinition()
                 .name(fieldName)
                 .type(resultType)
                 .description(description)
-                .deprecate(deprecationReason);
-
-        entityBuilder.field(fieldBuilder);
-
-        ctx.addEntitySelectionWiring(entitySelectionFieldWiring(entity.getEntityClass(), fieldName, field));
-
+                .deprecate(deprecationReason)
+                .build();
     }
 
     boolean isFilterable(SchemaBuilderContext ctx) {
@@ -123,4 +140,3 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
         return requireNonNull(function, "function").apply(this);
     }
 }
-

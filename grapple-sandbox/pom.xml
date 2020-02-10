@@ -9,7 +9,7 @@
         <dependency>
             <groupId>org.grapple</groupId>
             <artifactId>grapple-core</artifactId>
-            <version>20200201.4</version>
+            <version>20200202.1</version>
         </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>
@@ -50,6 +50,12 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.30</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>RELEASE</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <properties>

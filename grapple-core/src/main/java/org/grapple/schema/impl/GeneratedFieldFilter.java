@@ -5,11 +5,13 @@ import static graphql.schema.GraphQLInputObjectType.newInputObject;
 import static graphql.schema.GraphQLTypeReference.typeRef;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Objects.requireNonNull;
+import static org.grapple.utils.Utils.readOnlyCopy;
 
 import java.util.Map;
 import graphql.schema.GraphQLInputObjectType;
 import graphql.schema.GraphQLTypeReference;
 import org.grapple.reflect.TypeLiteral;
+import org.grapple.utils.Utils;
 
 final class GeneratedFieldFilter<T> {
 
@@ -23,9 +25,9 @@ final class GeneratedFieldFilter<T> {
 
     GeneratedFieldFilter(FieldFilterDefinitionImpl<T> definition) {
         this.filterType = requireNonNull(definition.getFieldType(), "fieldType");
-        this.entityName = requireNonNull(definition.getEntityName(), "entityName");
+        this.entityName = requireNonNull(definition.getName(), "entityName");
         this.description = definition.getDescription();
-        this.items = unmodifiableMap(requireNonNull(definition.getItems(), "items"));
+        this.items = readOnlyCopy(requireNonNull(definition.getItems(), "items"));
     }
 
     GraphQLTypeReference getRef() {

@@ -1,21 +1,23 @@
 package org.grapple.schema.impl;
 
-import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.reflect.ReflectUtils.typeLiteral;
 import static org.grapple.schema.impl.EntityQueryUtils.buildAndRegisterEntityQuery;
+import static org.grapple.utils.Utils.readOnlyCopy;
 
 import java.lang.reflect.Type;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.grapple.core.ElementVisibility;
 import org.grapple.core.Validatable;
+import org.grapple.reflect.EntityQueryMetadata.EntityQueryMethodMetadata;
+import org.grapple.reflect.EntityQueryMetadata.EntityQueryParameterMetadata;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntityQueryDefinition;
 import org.grapple.schema.EntityQueryDefinitionParameter;
 import org.grapple.schema.EntityQueryResolver;
 import org.grapple.schema.EntityQueryType;
-import org.grapple.schema.impl.EntityQueryScanner.QueryMethodResult;
 import org.grapple.utils.NoDuplicatesSet;
 import org.grapple.utils.Utils;
 
@@ -37,21 +39,23 @@ final class GeneratedEntityQueryDefinitionImpl<X> implements EntityQueryDefiniti
 
     private String deprecationReason;
 
-    GeneratedEntityQueryDefinitionImpl(EntitySchemaImpl schema, EntityDefinitionImpl<X> entity, QueryMethodResult<X> methodResult, EntityQueryResolver<X> queryResolver) {
-        requireNonNull(methodResult, "methodResult");
+    private ElementVisibility visibility;
+
+    GeneratedEntityQueryDefinitionImpl(EntitySchemaImpl schema, EntityDefinitionImpl<X> entity, EntityQueryMethodMetadata<X> methodMetadata, EntityQueryResolver<X> queryResolver) {
+        requireNonNull(methodMetadata, "methodMetadata");
 
         this.schema = requireNonNull(schema, "schema");
         this.entity = requireNonNull(entity, "entity");
-        this.queryType = requireNonNull(methodResult.queryType, "queryType");
+        this.queryType = requireNonNull(methodMetadata.queryType, "queryType");
         this.queryResolver = requireNonNull(queryResolver, "queryResolver");
 
-        for (EntityQueryScanner.QueryParameterResult parameterResult: methodResult.parameters.values()) {
-            parameters.add(new GeneratedParameterImpl(parameterResult));
+        for (EntityQueryParameterMetadata parameterMetadata: methodMetadata.parameters.values()) {
+            parameters.add(new GeneratedParameterImpl(parameterMetadata));
         }
 
-        this.queryName = methodResult.queryName;
-        this.description = methodResult.description;
-        this.deprecationReason = methodResult.deprecationReason;
+        this.queryName = methodMetadata.queryName;
+        this.description = methodMetadata.description;
+        this.deprecationReason = methodMetadata.deprecationReason;
     }
 
     @Override
@@ -70,12 +74,12 @@ final class GeneratedEntityQueryDefinitionImpl<X> implements EntityQueryDefiniti
     }
 
     @Override
-    public String getQueryName() {
+    public String getName() {
         return queryName;
     }
 
     @Override
-    public void setQueryName(String queryName) {
+    public void setName(String queryName) {
         requireNonNull(queryName, "queryName");
         this.queryName = queryName;
     }
@@ -101,8 +105,18 @@ final class GeneratedEntityQueryDefinitionImpl<X> implements EntityQueryDefiniti
     }
 
     @Override
+    public ElementVisibility getVisibility() {
+        return visibility;
+    }
+
+    @Override
+    public void setVisibility(ElementVisibility visibility) {
+        this.visibility = visibility;
+    }
+
+    @Override
     public Set<? extends EntityQueryDefinitionParameter<?>> getParameters() {
-        return unmodifiableSet(parameters);
+        return readOnlyCopy(parameters);
     }
 
     @Override
@@ -152,19 +166,19 @@ final class GeneratedEntityQueryDefinitionImpl<X> implements EntityQueryDefiniti
 
         private final int index;
 
-        private final boolean required;
+        private final boolean forcedRequired;
+
+        private boolean required;
 
         private String description;
 
-        private GeneratedParameterImpl(EntityQueryScanner.QueryParameterResult parameterResult) {
-            requireNonNull(parameterResult, "parameterResult");
-
-            this.type = requireNonNull(parameterResult.type, "type");
-            this.name = requireNonNull(parameterResult.name, "name");
-            this.index = parameterResult.index;
-            this.required = parameterResult.required;
-
-            this.description = parameterResult.description;
+        private GeneratedParameterImpl(EntityQueryParameterMetadata parameterMetadata) {
+            requireNonNull(parameterMetadata, "parameterMetadata");
+            this.type = requireNonNull(parameterMetadata.type, "type");
+            this.name = requireNonNull(parameterMetadata.name, "name");
+            this.index = parameterMetadata.index;
+            this.forcedRequired = parameterMetadata.required;
+            this.description = parameterMetadata.description;
         }
 
         @Override
@@ -194,22 +208,12 @@ final class GeneratedEntityQueryDefinitionImpl<X> implements EntityQueryDefiniti
 
         @Override
         public boolean isRequired() {
-            return required;
+            return (forcedRequired || required);
         }
 
         @Override
         public void setRequired(boolean required) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public String getTypeAlias() {
-            return null;
-        }
-
-        @Override
-        public void setTypeAlias(String typeAlias) {
-            throw new UnsupportedOperationException();
+            this.required = required;
         }
 
         @Override
@@ -226,7 +230,6 @@ final class GeneratedEntityQueryDefinitionImpl<X> implements EntityQueryDefiniti
         public <Z> Z invoke(Function<EntityQueryDefinitionParameter<Object>, Z> function) {
             return requireNonNull(function, "function").apply(this);
         }
-
     }
 }
 

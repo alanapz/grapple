@@ -2,7 +2,7 @@ package sandbox.grapple;
 
 import javax.persistence.criteria.Expression;
 import org.grapple.query.EntityContext;
-import org.grapple.utils.EntitySortKey;
+import org.grapple.query.EntitySortKey;
 import sandbox.grapple.entity.User;
 
 public enum UserSortKey implements EntitySortKey<User> {

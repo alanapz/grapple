@@ -8,17 +8,9 @@ import org.grapple.query.EntityField;
 import org.grapple.query.EntityJoin;
 import org.grapple.reflect.TypeLiteral;
 
-public interface EntityDefinition<X> extends Chainable<EntityDefinition<X>> {
+public interface EntityDefinition<X> extends EntitySchemaElement, Chainable<EntityDefinition<X>> {
 
     Class<X> getEntityClass();
-
-    String getName();
-
-    void setName(String name);
-
-    String getDescription();
-
-    void setDescription(String description);
 
     <T> EntityFieldDefinition<X, T> addField(EntityField<X, T> field);
 
@@ -28,9 +20,9 @@ public interface EntityDefinition<X> extends Chainable<EntityDefinition<X>> {
 
     Map<EntityJoin<X, ?>, ? extends EntityJoinDefinition<X, ?>> getJoins();
 
-    <T> EntityCustomFilterDefinition<X, T> addCustomFilter(TypeLiteral<T> fieldType, Consumer<EntityCustomFilterDefinition<X, T>> consumer);
+    <T> EntityFilterItemDefinition<X, T> addFilterItem(TypeLiteral<T> fieldType, Consumer<EntityFilterItemDefinition<X, T>> consumer);
 
-    Set<? extends EntityCustomFilterDefinition<X, ?>> getCustomFilters();
+    Set<? extends EntityFilterItemDefinition<X, ?>> getFilterItems();
 
     EntityQueryDefinition<X> addQuery(Consumer<EntityQueryDefinition<X>> consumer);
 

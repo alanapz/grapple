@@ -3,7 +3,6 @@ package org.grapple.query;
 import java.util.List;
 import java.util.function.Consumer;
 import javax.persistence.EntityManager;
-import org.grapple.utils.EntitySortKey;
 
 public interface RootFetchSet<X> extends FetchSet<X> {
 
@@ -22,6 +21,8 @@ public interface RootFetchSet<X> extends FetchSet<X> {
     <T> RootFetchSet<X> setQueryParameter(QueryParameter<T> parameter, T value);
 
     QueryResultList<X> execute(EntityManager entityManager, EntityRoot<X> entityRoot);
+
+    EntityResultList<X> entityQuery(EntityManager entityManager, EntityRoot<X> entityRoot);
 
     @Override
     RootFetchSet<X> select(EntityField<X, ?> selection);

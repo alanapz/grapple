@@ -9,6 +9,7 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.Map;
 import java.util.Set;
+import graphql.schema.GraphQLInputObjectField;
 import graphql.schema.GraphQLInputObjectType;
 import graphql.schema.GraphQLTypeReference;
 
@@ -18,9 +19,9 @@ final class GeneratedEntityFilter<X> {
 
     private final Map<String, GeneratedEntityFilterItem<X>> items;
 
-    private final Set<EntityCustomFilterDefinitionImpl<X, ?>> customFilters;
+    private final Set<EntityFilterItemDefinitionImpl<X, ?>> customFilters;
 
-    GeneratedEntityFilter(String entityName, String description, Map<String, GeneratedEntityFilterItem<X>> items, Set<EntityCustomFilterDefinitionImpl<X, ?>> customFilters) {
+    GeneratedEntityFilter(String entityName, String description, Map<String, GeneratedEntityFilterItem<X>> items, Set<EntityFilterItemDefinitionImpl<X, ?>> customFilters) {
         this.entityName = requireNonNull(entityName, "entityName");
         this.items = unmodifiableMap(requireNonNull(items, "items"));
         this.customFilters = unmodifiableSet(requireNonNull(customFilters, "customFilters"));
@@ -33,7 +34,12 @@ final class GeneratedEntityFilter<X> {
     GraphQLInputObjectType build(SchemaBuilderContext ctx) {
         final GraphQLInputObjectType.Builder builder = newInputObject().name(entityName);
         items.forEach((key, value) -> builder.field(newInputObjectField().name(key).type(value.getInputType(this))));
-        customFilters.forEach(customFilter -> customFilter.build(ctx, builder));
+        customFilters.forEach(customFilter -> {
+            final GraphQLInputObjectField inputObjectField = customFilter.build(ctx);
+            if (inputObjectField != null) {
+                builder.field(inputObjectField);
+            }
+        });
         return builder.build();
     }
 }

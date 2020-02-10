@@ -1,7 +1,8 @@
 package app;
 
+import static graphql.ExecutionInput.newExecutionInput;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static org.grapple.utils.Utils.toSet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,9 +17,7 @@ import graphql.GraphQLError;
 import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.idl.SchemaPrinter;
-import org.grapple.query.EntityField;
 import org.grapple.query.EntityFilter;
-import org.grapple.query.EntityJoin;
 import org.grapple.query.Filters;
 import org.grapple.query.QueryResultList;
 import org.grapple.query.RootFetchSet;
@@ -26,18 +25,15 @@ import org.grapple.query.SortDirection;
 import org.grapple.query.impl.QueryProvider;
 import org.grapple.reflect.GenericLiteral;
 import org.grapple.reflect.TypeLiteral;
-import org.grapple.schema.EntityDefinition;
-import org.grapple.schema.EntityDefinitionScannerCallback;
 import org.grapple.schema.EntitySchema;
 import org.grapple.schema.EntitySchemaListener;
+import org.grapple.schema.EntitySchemaResult;
 import org.grapple.schema.FieldFilterDefinition;
 import org.grapple.schema.impl.EntitySchemaProvider;
-import org.grapple.schema.instrumentation.DebugInstrumentation;
 import org.grapple.schema.instrumentation.DebugInstrumentationCallback;
 import sandbox.grapple.CompanyField;
 import sandbox.grapple.UserField;
 import sandbox.grapple.UserPrivateMessageField;
-import sandbox.grapple.entity.Company;
 import sandbox.grapple.entity.User;
 import sandbox.grapple.entity.UserPrivateMessage;
 
@@ -67,7 +63,7 @@ public class Launch {
         testCallback.execute(getEntityManager());
     }
 
-    public static GraphQL buildGraphQL(EntitySchema entitySchema) {
+    public static EntitySchemaResult buildGraphQL(EntitySchema entitySchema) {
 
         DebugInstrumentationCallback callback = new DebugInstrumentationCallback() {
 
@@ -87,7 +83,19 @@ public class Launch {
             }
         };
 
-        return GraphQL.newGraphQL(entitySchema.generate()).instrumentation(new DebugInstrumentation<>(callback)).build();
+        return entitySchema.generate();
+    }
+
+    public static void runQuery(GraphQL graphQL, String query) {
+        requireNonNull(graphQL, "graphQL");
+        requireNonNull(query, "query");
+        final ExecutionInput executionInput = newExecutionInput().query(query).build();
+        System.out.println(format("Query: %s", executionInput.getQuery()));
+        final ExecutionResult executionResult = graphQL.execute(executionInput);
+        if (!executionResult.getErrors().isEmpty()) {
+            throw new RuntimeException(executionResult.getErrors().toString());
+        }
+        System.out.println(format("Response: %s", (Object) executionResult.getData()));
     }
 
     private static EntityManager getEntityManager() {
@@ -126,37 +134,7 @@ public class Launch {
                 fieldFilter.setDescription("ALAN WOZ HERE");
             }
         });
-        entitySchema.importDefinitions(toSet("app", "sandbox"), new EntityDefinitionScannerCallback() {
 
-            public boolean acceptEntity(Class<?> entityClass) {
-                return true;
-            }
-
-            @Override
-            public boolean scanDefinitions(Class<?> definitionsClass) {
-//                System.out.println(definitionsClass);
-                return true;
-            }
-
-            public void configureEntity(EntityDefinition<?> entity) {
-                if (entity.getEntityClass() == Company.class) {
-                    entity.setName("CompanyXxx");
-                    entity.setDescription("Description");
-                }
-            }
-
-            @Override
-            public <X, T> boolean acceptField(EntityDefinition<X> entity, EntityField<X, T> field) {
-//                System.out.println("field " + entity + " : " + field);
-                return true;
-            }
-
-            @Override
-            public <X, Y> boolean acceptJoin(EntityDefinition<X> entity, EntityJoin<X, Y> join) {
-//                System.out.println("join " + entity + " : " + join);
-                return true;
-            }
-        });
 
 //        entitySchema.importQueries(new UserService(entityManager), new EntityQueryScannerCallback() {
 //
@@ -174,8 +152,8 @@ public class Launch {
 //            }
 //        });
 
-        entitySchema.addEntity(User.class).addCustomFilter(new GenericLiteral<List<Set<Integer>>>() {}, filter -> {
-            filter.setFieldName("apzTest");
+        entitySchema.addEntity(User.class).addFilterItem(new GenericLiteral<List<Set<Integer>>>() {}, filter -> {
+            filter.setName("apzTest");
             filter.setFilterResolver((env, fetchSet, rawArgs) -> {
                 List<Set<Integer>> filterArgs = (List<Set<Integer>>) (Object) rawArgs;
                 final List<EntityFilter<User>> filters = new ArrayList<>();
@@ -240,39 +218,9 @@ public class Launch {
 //                .build();
 
 //        ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query { listAllUsers(filter:{}) { results { displayName } } }").build();
-        try {
-            GraphQL graphQL = GraphQL.newGraphQL(entitySchema.generate()).instrumentation(new DebugInstrumentation<>(callback)).build();
-//            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(filter: {isNameAlan: {is: true}, id: 5, id_in: [1,2,3], NOT: { id: 99, id_in: [991, 992] }, OR: [ {id: 4 }, {id: 5, id_in: [5, 1]}]}) {results{displayName,company{id,owner{displayName}}}}}").build();
-//            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(filter: {isNameAlan: {is: true}, displayName: {like: \"123\"} }) {results{displayName,company{id,owner{displayName}}}}}").build();
-//            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(filter: {id: null, dep: { is_null: true }, displayName: { not_ilike: \"xyz\" }, isNameAlan: {is: true, not_in: [ true, false, null], is_null: true} }) {results{displayName}}}").build();
-//            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query(
-//                    "query{ listAllUsers(filter: { " +
-//                            "id: null, " +
-//                            "dep: { is_null: true }," +
-//                            "displayName: { not_ilike: \"xyz\" }," +
-//                            "isNameAlan: {is: true, not_in: [ true, false, null], is_null: true}" +
-//                            "}) { results{displayName}}}").build();
-            String firstBit = "{ company: { id: { is: 123 }, owner: { displayName: { is_null: true }  } }  }";
-            String secondBit = "{ company: { id: { is: 456 }, owner: { isNameAlan: { is: false }  } }  }";
-            String thirddBit = "{ company: { id: { is: 4561 } }}";
-            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ getOptionalCurrentUser(userId: 1) { isNameAlan,displayName,displayName2,userGuid,company2{displayName},company{id,owner{id}}}}").build();
-//            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ getUserById(userId: 1) { isNameAlan,displayName,displayName2,userGuid,company2{displayName},company{id,owner{id}}}}").build();
-///**/            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(companyIds2: [[1,2,3]], filter: { apzTest: [[1,2,3],[4,5,6]] }) { results{isNameAlan,displayName,displayName2,userGuid,company2{displayName},company{id,owner{id}}}}}").build();
-//            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers{ results{isNameAlan,displayName,company{id,owner{id}}}}}").build();
-//            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(orderBy: [{ id: DESC }, {dep: ASC}, {company: { displayName: ASC }} ] ) { results{displayName,company{id}}}}").build();
-//            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(filter: { or: [" + firstBit + ", {  and: [" +  firstBit + " , " + secondBit + " ]  }] }) { results{displayName,company{id}}}}").build();
-//            ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(filter: { not: { id: {is: 123 }}, and: { id: { is: 456 }}, or: [{ id: { is: 456 }}, { id: { is: 457 }}, { id: { is_not: 999 }}] }) { results{displayName,company{id}}}}").build();
-            System.out.println(executionInput);
-            ExecutionResult executionResult = graphQL.execute(executionInput);
-            System.out.print(executionResult);
-        }
-        catch (Exception e) {
-            e.printStackTrace();;
-        }
 
         System.exit(0);
 
-        schemaTest();
         if (true) {
             return;
         }
@@ -299,44 +247,6 @@ public class Launch {
         //configOverrides.put("hibernate.hbm2ddl.auto", "create-drop");
         //EntityManagerFactory programmaticEmf =
 //                Persistence.createEntityManagerFactory("manager1", configOverrides);
-    }
-
-
-
-
-    private static void schemaTest() {
-
-        System.out.print(UserField.Id.getResultType());
-
-        final EntitySchema entitySchema = EntitySchemaProvider.newSchema();
-//        entitySchema.addEntity(UserPrivateMessage.class, userPrivateMessage -> userPrivateMessage
-//                .addField(UserPrivateMessageField.TIMESTAMP)
-//                .importFrom(UserPrivateMessageField.class));
-//        entitySchema.addEntity(User.class, user -> user.importFrom(UserField.class));
-
-        GraphQLSchema schema = entitySchema.generate();
-
-        SchemaPrinter printer = new SchemaPrinter(SchemaPrinter.Options.defaultOptions()
-                .includeScalarTypes(true)
-                .includeExtendedScalarTypes(true)
-                .includeIntrospectionTypes(false)
-                .includeDirectives(false)
-                .includeSchemaDefinition(true));
-        System.out.println(printer.print(schema));
-
-        GraphQL graphQL = GraphQL.newGraphQL(schema).build();
-        ExecutionInput executionInput = null;
-//        ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query { listAllUsers(filter: {displayNamexx: \"alan\"}){ results { displayName } } }")
-//                .build();
-
-//        ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query { listAllUsers(filter:{}) { results { displayName } } }").build();
-        executionInput = ExecutionInput.newExecutionInput().query("query{ listAllUsers(filter: {isNameAlan: true, id: 5, id_in: [1,2,3], NOT: { id: 99, id_in: [991, 992] }, OR: [ {id: 4 }, {id: 5, id_in: [5, 1]}]}) {results{displayName}}}").build();
-        ExecutionResult executionResult = graphQL.execute(executionInput);
-
-        System.out.print(executionResult);
-
-
-
     }
 
     private QueryResultList listUsers(RootFetchSet<User> fetches) {
@@ -435,7 +345,7 @@ entitySchema.addEntity(BillingEntity.class).addFields(BillingEntityFetches.ID, B
         GraphQL graphQL = GraphQL.newGraphQL(schema)
                 .build();
 
-        ExecutionInput executionInput = ExecutionInput.newExecutionInput().query("query { listAllUsers { results { username, client1(filter: {label: \"123\"}){id}, client2{id}, client3{id} } } }")
+        ExecutionInput executionInput = newExecutionInput().query("query { listAllUsers { results { username, client1(filter: {label: \"123\"}){id}, client2{id}, client3{id} } } }")
                 .build();
 
         ExecutionResult executionResult = graphQL.execute(executionInput);
@@ -448,58 +358,6 @@ entitySchema.addEntity(BillingEntity.class).addFields(BillingEntityFetches.ID, B
 
 
         // entityManager.getCriteriaBuilder().createTupleQuery();
-    }
-
-    private static <X> void execute(EntityManager entityManager) {
-//        FetchSet<User> fetchSet = new FetchSet<User>();
-//        fetchSet.add(UserFetches.ID);
-//        fetchSet.add(UserFetches.LABEL);
-//        fetchSet.add(UserFetches.CLIENT_XX);
-        // fetchSet.filter(UserFetches.USERID_1);
-//        fetchSet.filter(UserFetches.filterByClientLabel("aaa0", "bbb0", "ccc0"));
-//        fetchSet.filter(UserFetches.filterByClientLabel("aaa1", "bbb1", "ccc1"));
-//        fetchSet.filter(UserFetches.filterByClientLabel("aaa2", "bbb2", "ccc2"));
-//        fetchSet.filter(UserFetches.filterByClientLabel("aaa3", "bbb3", "ccc3"));
-//        fetchSet.filter(UserFetches.filterByClientLabel2("aaa0", "bbb0", "ccc0"));
-//        fetchSet.filter(UserFetches.filterByClientLabel2("aaa1", "bbb1", "ccc1"));
-//        fetchSet.filter(UserFetches.filterByClientLabel2("aaa2", "bbb2", "ccc2"));
-//        fetchSet.filter(UserFetches.filterByClientLabel2("aaa3", "bbb3", "ccc3"));
-
-//        FetchSet<Client> c1= fetchSet.join(UserFetches.CLIENT_1);
-        //FetchSet<Client> c2= fetchSet.join(UserFetches.CLIENT_2);
-        //c2.add(UserFetches.CLIENT_ID);
-        //FetchSet<Client> c3= fetchSet.join(UserFetches.CLIENT_3);
-        //c3.add(UserFetches.CLIENT_ID);
-        //c3.add(UserFetches.CLIENT_LABEL);
-
-//        FetchSet<User> c1Owner = c1.join(UserFetches.CLIENT_OWNER);
-//        FetchSet<Client> c1OwnerClient = c1Owner.join(UserFetches.CLIENT_1);
-//        FetchSet<User> c1OwnerClientOwner = c1OwnerClient.join(UserFetches.CLIENT_OWNER);
-//        // c1OwnerClientOwner.add(UserFetches.USER_EXP.apply("2"));
-//        FetchSet<Client> c1OwnerClientOwnerClient = c1OwnerClientOwner.join(UserFetches.CLIENT_1);
-//        FetchSet<User> c1OwnerClientOwnerClientOwner = c1OwnerClientOwnerClient.join(UserFetches.CLIENT_OWNER);
-//        // c1OwnerClientOwnerClientOwner.add(UserFetches.USER_EXP.apply("3"));
-//        FetchSet<Client> c1OwnerClientOwnerClientOwnerClient = c1OwnerClientOwnerClientOwner.join(UserFetches.CLIENT_1);
-//        FetchSet<User> c1OwnerClientOwnerClientOwnerClientOwner = c1OwnerClientOwnerClientOwnerClient.join(UserFetches.CLIENT_OWNER);
-//
-//        EntitySelection<User, ?> selection =  UserFetches.USER_EXP_1.apply("4");
-//
-//        EntitySelection<User, ?> selection2 =  UserFetches.USER_EXP_2.apply("4");
-//
-//        c1OwnerClientOwnerClientOwnerClientOwner.add(selection, selection2);
-//
-//        EntitySort sort = new EntitySort();
-////        sort.add(c2, UserFetches.CLIENT_ID, SortDirection.ASC);
-////        sort.add(c2, UserFetches.CLIENT_LABEL, SortDirection.DESC);
-////
-////        sort.add(c3, UserFetches.CLIENT_LABEL, SortDirection.DESC);
-//
-//        QueryResultList x = new ExecutionContext(entityManager).execute(User.class, fetchSet, sort, 0, Integer.MAX_VALUE);
-//        System.out.println(x);
-//        System.out.println(x.getResults().get(0));
-//        System.out.println(x.getResults().get(0).get(c1OwnerClientOwnerClientOwnerClientOwner, selection));
-
-
     }
 }
 

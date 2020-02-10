@@ -16,6 +16,7 @@ import graphql.schema.DataFetchingEnvironment;
 import org.grapple.query.QueryResultList;
 import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
+import org.grapple.schema.EntityQueryExecutionListener.QueryListenerContext;
 import org.grapple.utils.Utils;
 
 final class EntityListQueryDataFetcher<X> implements DataFetcher<Map<String, Object>> {
@@ -26,31 +27,45 @@ final class EntityListQueryDataFetcher<X> implements DataFetcher<Map<String, Obj
 
     private final String queryName;
 
-    EntityListQueryDataFetcher(SchemaBuilderContext ctx, Class<X> entityClass, String queryName) {
+    private final Object queryTag;
+
+    EntityListQueryDataFetcher(SchemaBuilderContext ctx, Class<X> entityClass, String queryName, Object queryTag) {
         this.ctx = requireNonNull(ctx, "ctx");
         this.entityClass = requireNonNull(entityClass, "entityClass");
         this.queryName = requireNonNull(queryName, "queryName");
+        this.queryTag = queryTag;
     }
 
     @Override
     public Map<String, Object> get(DataFetchingEnvironment environment) {
         final SelectionSet selectionSet = SchemaUtils.walkFieldHierachy(environment.getField(), "results");
         if (selectionSet == null) {
-            return buildResponse(0, emptyList());
+            return buildResponse(0, 0, 0, emptyList());
         }
         final RootFetchSet<X> fetchSet = buildFetchSet(environment, selectionSet);
-        final QueryResultList<X> results = ctx.executeEntityQuery(environment, entityClass, queryName, fetchSet, environment.getArguments());
-        if (results == null || results.getTotalResults() == 0) {
-            return buildResponse(0, emptyList());
+        final QueryListenerContext queryListenerContext = ctx.getEntityQueryExecutionListeners().queryStarted(environment, fetchSet, queryName, queryTag);
+        try {
+            final Map<String, Object> response = executeQuery(environment, selectionSet, fetchSet);
+            queryListenerContext.complete(response);
+            return response;
         }
-        if (results.getRowsRetrieved() == 0) {
-            return buildResponse(results.getTotalResults(), emptyList());
+        catch (Exception e) {
+            queryListenerContext.error(e);
+            throw e;
+        }
+    }
+
+    private Map<String, Object> executeQuery(DataFetchingEnvironment environment, SelectionSet selectionSet, RootFetchSet<X> fetchSet) {
+        final QueryResultList<X> results = ctx.executeEntityQuery(environment, entityClass, queryName, fetchSet, environment.getArguments());
+        requireNonNull(results, "results");
+        if (results.getTotalResults() == 0 || results.getRowsRetrieved() == 0) {
+            return buildResponse(fetchSet.getFirstResult(), fetchSet.getMaxResults(), results.getTotalResults(), emptyList());
         }
         final List<Map<String, Object>> response = new ArrayList<>();
-        for (QueryResultRow<X> resultRow: results) {
+        for (QueryResultRow<X> resultRow : results) {
             response.add(ctx.parseQueryResponse(environment, entityClass, selectionSet, resultRow));
         }
-        return buildResponse(results.getTotalResults(), response);
+        return buildResponse(fetchSet.getFirstResult(), fetchSet.getMaxResults(), results.getTotalResults(), response);
     }
 
     private RootFetchSet<X> buildFetchSet(DataFetchingEnvironment environment, SelectionSet selectionSet) {
@@ -72,12 +87,14 @@ final class EntityListQueryDataFetcher<X> implements DataFetcher<Map<String, Obj
         }
         // Finally first/max results
         fetchSet.setFirstResult(coalesce((Integer) arguments.get("offset"), 0));
-        fetchSet.setMaxResults(coalesce((Integer) arguments.get("count"), Integer.MAX_VALUE));
+        fetchSet.setMaxResults(coalesce((Integer) arguments.get("count"), 1024));
         return fetchSet;
     }
 
-    private Map<String, Object> buildResponse(int totalResults, List<Map<String, Object>> results) {
+    private Map<String, Object> buildResponse(int offset, int count, int totalResults, List<Map<String, Object>> results) {
         final Map<String, Object> response = new HashMap<>();
+        response.put("offset", offset);
+        response.put("count", count);
         response.put("total", totalResults);
         response.put("results", results);
         return response;

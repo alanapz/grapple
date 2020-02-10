@@ -13,6 +13,7 @@ import javax.persistence.criteria.Selection;
 import javax.persistence.metamodel.SetAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import org.grapple.core.Chainable;
+import org.grapple.query.EntityFieldBuilder.ExpressionResolver;
 
 public interface EntityContext<X> extends Chainable<EntityContext<X>> {
 
@@ -37,7 +38,9 @@ public interface EntityContext<X> extends Chainable<EntityContext<X>> {
 
     <T extends Selection<?>> T addSelection(T selection);
 
-    <T> NonQuerySelection<X, T> addNonQuerySelection(NonQueryField<X, T> nonQueryField);
+    <T> Expression<T> addSelection(ExpressionResolver<X, T> resolver);
+
+    <T> NonQuerySelection<T> addNonQuerySelection(NonQueryField<X, T> nonQueryField);
 
     CriteriaQuery<?> getQuery();
 

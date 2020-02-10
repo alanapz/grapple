@@ -3,20 +3,19 @@ package org.grapple.schema.impl;
 import static graphql.schema.GraphQLInputObjectField.newInputObjectField;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.entityFilterCustomWiring;
-import static org.grapple.utils.Utils.coalesce;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
-import graphql.schema.GraphQLInputObjectType;
+import graphql.schema.GraphQLInputObjectField;
 import graphql.schema.GraphQLInputType;
-import org.grapple.core.Validatable;
+import org.grapple.core.ElementVisibility;
 import org.grapple.reflect.TypeLiteral;
-import org.grapple.schema.EntityCustomFilterDefinition;
-import org.grapple.schema.EntityCustomFilterResolver;
 import org.grapple.schema.EntityDefinition;
+import org.grapple.schema.EntityFilterItemDefinition;
+import org.grapple.schema.EntityFilterItemResolver;
 import org.grapple.utils.Utils;
 
-final class EntityCustomFilterDefinitionImpl<X, T> implements EntityCustomFilterDefinition<X, T>, Validatable {
+final class EntityFilterItemDefinitionImpl<X, T> implements EntityFilterItemDefinition<X, T> {
 
     private final EntitySchemaImpl schema;
 
@@ -28,11 +27,13 @@ final class EntityCustomFilterDefinitionImpl<X, T> implements EntityCustomFilter
 
     private String description;
 
-    private GraphQLInputType forcedGraphQLType;
+    private String deprecationReason;
 
-    private EntityCustomFilterResolver<X, T> filterResolver;
+    private ElementVisibility visibility;
 
-    EntityCustomFilterDefinitionImpl(EntitySchemaImpl schema, EntityDefinitionImpl<X> entity, TypeLiteral<T> fieldType) {
+    private EntityFilterItemResolver<X, T> filterResolver;
+
+    EntityFilterItemDefinitionImpl(EntitySchemaImpl schema, EntityDefinitionImpl<X> entity, TypeLiteral<T> fieldType) {
         this.schema = requireNonNull(schema, "schema");
         this.entity = requireNonNull(entity, "entity");
         this.fieldType = requireNonNull(fieldType, "fieldType");
@@ -49,12 +50,12 @@ final class EntityCustomFilterDefinitionImpl<X, T> implements EntityCustomFilter
     }
 
     @Override
-    public String getFieldName() {
+    public String getName() {
         return fieldName;
     }
 
     @Override
-    public void setFieldName(String fieldName) {
+    public void setName(String fieldName) {
         requireNonNull(fieldName, "fieldName");
         this.fieldName = fieldName;
     }
@@ -70,22 +71,32 @@ final class EntityCustomFilterDefinitionImpl<X, T> implements EntityCustomFilter
     }
 
     @Override
-    public GraphQLInputType getForcedGraphQLType() {
-        return forcedGraphQLType;
+    public String getDeprecationReason() {
+        return deprecationReason;
     }
 
     @Override
-    public void setForcedGraphQLType(GraphQLInputType forcedGraphQLType) {
-        this.forcedGraphQLType = forcedGraphQLType;
+    public void setDeprecationReason(String deprecationReason) {
+        this.deprecationReason = deprecationReason;
     }
 
     @Override
-    public EntityCustomFilterResolver<X, T> getFilterResolver() {
+    public ElementVisibility getVisibility() {
+        return visibility;
+    }
+
+    @Override
+    public void setVisibility(ElementVisibility visibility) {
+        this.visibility = visibility;
+    }
+
+    @Override
+    public EntityFilterItemResolver<X, T> getFilterResolver() {
         return filterResolver;
     }
 
     @Override
-    public void setFilterResolver(EntityCustomFilterResolver<X, T> filterResolver) {
+    public void setFilterResolver(EntityFilterItemResolver<X, T> filterResolver) {
         requireNonNull(filterResolver, "filterResolver");
         this.filterResolver = filterResolver;
     }
@@ -100,22 +111,30 @@ final class EntityCustomFilterDefinitionImpl<X, T> implements EntityCustomFilter
         }
     }
 
-    void build(SchemaBuilderContext ctx, GraphQLInputObjectType.Builder inputObjectBuilder) {
-        validate();
-        final GraphQLInputType graphQLType = coalesce(forcedGraphQLType, (GraphQLInputType) schema.getUnwrappedTypeFor(ctx,fieldType.getType()));
-        if (graphQLType != null) {
-            inputObjectBuilder.field(newInputObjectField().name(fieldName).description(description).type(graphQLType));
-            ctx.addEntityFilterWiring(entityFilterCustomWiring(entity.getEntityClass(), fieldName, fieldType, filterResolver));
+    GraphQLInputObjectField build(SchemaBuilderContext ctx) {
+        this.validate();
+        if (!ctx.isSchemaElementVisible(visibility)) {
+            return null;
         }
+        final GraphQLInputType graphQLType = (GraphQLInputType) schema.getUnwrappedTypeFor(ctx, fieldType.getType());
+        if (graphQLType == null) {
+            return null;
+        }
+        ctx.addEntityFilterWiring(entityFilterCustomWiring(entity.getEntityClass(), fieldName, fieldType, filterResolver));
+        return newInputObjectField()
+                .name(fieldName)
+                .description(description)
+                .type(graphQLType)
+                .build();
     }
 
     @Override
-    public EntityCustomFilterDefinitionImpl<X, T> apply(Consumer<EntityCustomFilterDefinition<X, T>> consumer) {
+    public EntityFilterItemDefinition<X, T> apply(Consumer<EntityFilterItemDefinition<X, T>> consumer) {
         return Utils.apply(this, consumer);
     }
 
     @Override
-    public <Z> Z invoke(Function<EntityCustomFilterDefinition<X, T>, Z> function) {
+    public <Z> Z invoke(Function<EntityFilterItemDefinition<X, T>, Z> function) {
         return requireNonNull(function, "function").apply(this);
     }
 }

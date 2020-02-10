@@ -5,6 +5,7 @@ import static org.jooq.lambda.Seq.seq;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -12,6 +13,7 @@ import org.grapple.query.QueryResultList;
 import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
 import org.grapple.query.TabularResultList;
+import org.grapple.schema.NonScalarQueryResultException;
 
 final class QueryResultListImpl<X> implements QueryResultList<X> {
 
@@ -54,6 +56,17 @@ final class QueryResultListImpl<X> implements QueryResultList<X> {
             consumer.accept(new QueryResultRowImpl<>(rootFetchSet, result), instance);
             return instance;
         }).toList();
+    }
+
+    @Override
+    public Optional<QueryResultRow<X>> getUniqueResult() {
+        if (results.isEmpty()) {
+            return Optional.empty();
+        }
+        if (results.size() != 1) {
+            throw new NonScalarQueryResultException("Query returned multiple rows");
+        }
+        return Optional.of(new QueryResultRowImpl<>(rootFetchSet, results.get(0)));
     }
 
     @Override
