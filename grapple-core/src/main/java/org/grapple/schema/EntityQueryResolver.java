@@ -8,6 +8,6 @@ import org.grapple.query.RootFetchSet;
 @FunctionalInterface
 public interface EntityQueryResolver<X> {
 
-    QueryResultList<X> execute(DataFetchingEnvironment env, RootFetchSet<X> fetchSet, Map<String, Object> queryParameters);
+    QueryResultList<X> execute(DataFetchingEnvironment environment, RootFetchSet<X> fetchSet, Map<String, Object> queryParameters);
 
 }

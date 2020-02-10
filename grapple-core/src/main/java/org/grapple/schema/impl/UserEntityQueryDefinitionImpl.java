@@ -22,7 +22,7 @@ final class UserEntityQueryDefinitionImpl<X> implements EntityQueryDefinitionImp
 
     private final EntityDefinitionImpl<X> entity;
 
-    private EntityQueryType queryType;
+    private EntityQueryType queryType = EntityQueryType.LIST;
 
     private String queryName;
 

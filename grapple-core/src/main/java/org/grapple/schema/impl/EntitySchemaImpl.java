@@ -1,6 +1,5 @@
 package org.grapple.schema.impl;
 
-import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
 import static graphql.schema.GraphQLNonNull.nonNull;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableList;
@@ -16,7 +15,6 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
@@ -33,13 +31,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
+import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.idl.SchemaPrinter;
-import org.grapple.query.EntityContext;
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityJoin;
 import org.grapple.query.EntityMetadataKeys;
@@ -61,7 +59,9 @@ import org.grapple.schema.EntitySchemaListener;
 import org.grapple.schema.EnumTypeBuilder;
 import org.grapple.schema.impl.EntityQueryScanner.QueryMethodResult;
 import org.grapple.utils.NoDuplicatesMap;
+import org.grapple.utils.NoDuplicatesSet;
 import org.grapple.utils.Utils;
+import org.jooq.lambda.tuple.Tuple2;
 
 final class EntitySchemaImpl implements EntitySchema {
 
@@ -69,9 +69,7 @@ final class EntitySchemaImpl implements EntitySchema {
 
     private final Map<Class<?>, EntityDefinitionImpl<?>> entities = new NoDuplicatesMap<>();
 
-    private final Map<Type, GraphQLOutputType> typeMappings = new HashMap<>();
-
-    private final Map<String, GraphQLType> customTypes = new HashMap<>();
+    private final Map<Type, GraphQLType> typeMappings = new NoDuplicatesMap<>();
 
     private EnumTypeBuilder enumTypeBuilder = EntitySchemaDefaults::buildEnumTypeForClass;
 
@@ -81,6 +79,10 @@ final class EntitySchemaImpl implements EntitySchema {
 
     private final TypeConverter typeConverter = new TypeConverter();
 
+    private final Set<GraphQLObjectType> unmanagedTypes = new NoDuplicatesSet<>();
+
+    private final Map<Tuple2<String, String>, DataFetcher<?>> unmanagedDataFetchers = new HashMap<>(); // Overwrite permitted
+
     private static final Map<Type, GraphQLOutputType> defaultTypeMappings = new HashMap<>();
 
     private static final SchemaPrinter defaultSchemaPrinter = new SchemaPrinter(SchemaPrinter.Options.defaultOptions()
@@ -89,6 +91,10 @@ final class EntitySchemaImpl implements EntitySchema {
             .includeIntrospectionTypes(false)
             .includeDirectives(false)
             .includeSchemaDefinition(true));
+
+    EntitySchemaImpl() {
+        EntitySchemaDefaults.addDefaultTypes(this);
+    }
 
     @Override
     public void addSchemaListener(EntitySchemaListener schemaListener) {
@@ -168,6 +174,27 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     @Override
+    public void addUnmanagedType(GraphQLObjectType type) {
+        requireNonNull(type, "type");
+        unmanagedTypes.add(type);
+    }
+
+    @Override
+    public void addUnmanagedDataFetcher(String parentTypeName, String fieldName, DataFetcher<?> dataFetcher) {
+        requireNonNull(parentTypeName, "parentTypeName");
+        requireNonNull(fieldName, "type");
+        requireNonNull(dataFetcher, "dataFetcher");
+        unmanagedDataFetchers.put(new Tuple2<>(parentTypeName, fieldName), dataFetcher);
+    }
+
+    @Override
+    public void addTypeMapping(Type javaType, GraphQLType graphQLType) {
+        requireNonNull(javaType, "javaType");
+        requireNonNull(graphQLType, "graphQLType");
+        typeMappings.put(javaType, graphQLType);
+    }
+
+    @Override
     public void importQueries(Object instance, EntityQueryScannerCallback scannerCallback) {
         requireNonNull(instance, "instance");
         requireNonNull(scannerCallback, "scannerCallback");
@@ -237,6 +264,9 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     <T> FieldFilterDefinitionImpl<T> generateFieldFilter(TypeLiteral<T> fieldType, GraphQLType gqlType) {
+        if (gqlType == null) {
+            return null; /// XXX: TODO: FIXME
+        }
         if (seq(schemaListeners).anyMatch(schemaListener -> !schemaListener.acceptFieldFilter(fieldType))) {
             return null;
         }
@@ -252,7 +282,7 @@ final class EntitySchemaImpl implements EntitySchema {
     public GraphQLSchema generate() {
         final GraphQLSchema.Builder builder = GraphQLSchema.newSchema();
 
-        final SchemaBuilderContext ctx = new SchemaBuilderContext(this);
+        final SchemaBuilderContext ctx = new SchemaBuilderContext(this, unmanagedTypes, unmanagedDataFetchers, typeConverter);
 
         for (EntityDefinitionImpl<?> metadata: entities.values()) {
             metadata.build(ctx);
@@ -280,7 +310,7 @@ final class EntitySchemaImpl implements EntitySchema {
 
     public GraphQLOutputType getUnwrappedTypeFor(SchemaBuilderContext ctx, Type type) {
         if (typeMappings.containsKey(type)) {
-            return typeMappings.get(type);
+            return (GraphQLOutputType) typeMappings.get(type);
         }
         if (defaultTypeMappings.containsKey(type)) {
             return defaultTypeMappings.get(type);
@@ -362,21 +392,6 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     static {
-        GraphQLObjectType.Builder builder = new GraphQLObjectType.Builder().name("FormattedTimestamp");
-        builder.field(newFieldDefinition()
-                .name("timestamp_utc")
-                .type(nonNull(Scalars.GraphQLString)));
-        builder.field(newFieldDefinition()
-                .name("timestamp_local")
-                .type(nonNull(Scalars.GraphQLString)));
-        builder.field(newFieldDefinition()
-                .name("formattedDayDateTime")
-                .type(nonNull(Scalars.GraphQLString)));
-        builder.field(newFieldDefinition()
-                .name("epoch_seconds")
-                .type(nonNull(Scalars.GraphQLLong)));
-
-        defaultTypeMappings.put(Instant.class, builder.build());
 
         // defaultTypeMappings.put(EitType.class, GraphQLEnumType.newEnum().name("EitType").value("value1", "456").value("value2", "789").build());
     }

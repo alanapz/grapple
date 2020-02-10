@@ -197,7 +197,6 @@ final class EntityQueryScanner {
             @Override
             @SuppressWarnings("unchecked")
             public QueryResultList<X> execute(DataFetchingEnvironment environment, RootFetchSet<X> fetchSet, Map<String, Object> queryParameters) {
-                requireNonNull(environment, "environment");
                 requireNonNull(fetchSet, "fetchSet");
                 requireNonNull(queryParameters, "queryParameters");
 

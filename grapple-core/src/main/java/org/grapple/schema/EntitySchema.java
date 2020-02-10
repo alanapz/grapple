@@ -1,7 +1,11 @@
 package org.grapple.schema;
 
+import java.lang.reflect.Type;
 import java.util.Set;
+import graphql.schema.DataFetcher;
+import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLSchema;
+import graphql.schema.GraphQLType;
 import org.grapple.core.Chainable;
 import org.grapple.reflect.TypeConverter;
 
@@ -27,9 +31,13 @@ public interface EntitySchema extends Chainable<EntitySchema> {
 
     TypeConverter getTypeConverter();
 
+    void addUnmanagedType(GraphQLObjectType type);
+
+    void addUnmanagedDataFetcher(String typeName, String fieldName, DataFetcher<?> dataFetcher);
+
+    void addTypeMapping(Type javaType, GraphQLType graphQLType);
 
 //    void addTypeAlias(String typeAliasName, GraphQLType type);
-
 
 //    EntitySchema addCustomType(String typeAlias, GraphQLType type);
 

@@ -67,6 +67,29 @@ public class Launch {
         testCallback.execute(getEntityManager());
     }
 
+    public static GraphQL buildGraphQL(EntitySchema entitySchema) {
+
+        DebugInstrumentationCallback callback = new DebugInstrumentationCallback() {
+
+            @Override
+            public Object started(String name, Object params) {
+                return null;
+            }
+
+            @Override
+            public void complete(String name, Object params, Object result, Object callbackToken) {
+
+            }
+
+            @Override
+            public void error(String name, Object params, Throwable throwable, Object callbackToken) {
+
+            }
+        };
+
+        return GraphQL.newGraphQL(entitySchema.generate()).instrumentation(new DebugInstrumentation<>(callback)).build();
+    }
+
     private static EntityManager getEntityManager() {
         if (entityManagerFactory == null) {
             Launch.entityManagerFactory = Persistence.createEntityManagerFactory("grapple-sandbox");

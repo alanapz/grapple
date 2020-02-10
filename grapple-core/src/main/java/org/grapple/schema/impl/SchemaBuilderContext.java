@@ -9,12 +9,9 @@ import static org.grapple.schema.impl.RuntimeWiring.FieldFilterWiring.fieldFilte
 import static org.jooq.lambda.Seq.seq;
 
 import java.lang.reflect.Type;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +36,7 @@ import org.grapple.query.QueryResultList;
 import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
 import org.grapple.reflect.ClassLiteral;
+import org.grapple.reflect.TypeConverter;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntityDefinition;
 import org.grapple.schema.EntityQueryType;
@@ -56,6 +54,12 @@ import org.jooq.lambda.tuple.Tuple2;
 final class SchemaBuilderContext {
 
     private final EntitySchemaImpl schema;
+
+    private final Set<GraphQLObjectType> unmanagedTypes;
+
+    private final Map<Tuple2<String, String>, DataFetcher<?>> unmanagedDataFetchers;
+
+    private final TypeConverter typeConverter;
 
     private final Map<EntityDefinition<?>, GraphQLObjectType.Builder> entityTypes = new HashMap<>();
 
@@ -87,8 +91,14 @@ final class SchemaBuilderContext {
 
     private final Set<GraphQLFieldDefinition> entityQueryFields = new NoDuplicatesSet<>();
 
-    SchemaBuilderContext(EntitySchemaImpl schema) {
+    SchemaBuilderContext(EntitySchemaImpl schema,
+                         Set<GraphQLObjectType> unmanagedTypes,
+                         Map<Tuple2<String, String>, DataFetcher<?>> unmanagedDataFetchers,
+                         TypeConverter typeConverter) {
         this.schema = requireNonNull(schema, "schema");
+        this.unmanagedTypes = new HashSet<>(unmanagedTypes);
+        this.unmanagedDataFetchers = new NoDuplicatesMap<>(unmanagedDataFetchers);
+        this.typeConverter = requireNonNull(typeConverter, "typeConverter");
     }
 
     EntitySchemaImpl getSchema() {
@@ -206,7 +216,7 @@ final class SchemaBuilderContext {
         for (Map.Entry<String, Object> arg: args.entrySet()) {
             final EntityQueryParameterWiring<?> queryParameterWiring = entityQueryParameterWirings.get(new Tuple2<>(queryName, arg.getKey()));
             if (queryParameterWiring != null) {
-                queryParameters.put(arg.getKey(), schema.getTypeConverter().convertObjectToType(queryParameterWiring.getParameterType(), arg.getValue()));
+                queryParameters.put(arg.getKey(), typeConverter.convertObjectToType(queryParameterWiring.getParameterType(), arg.getValue()));
             }
         }
         return queryWiring.executeQuery(this, environment, fetchSet, queryParameters);
@@ -363,6 +373,9 @@ final class SchemaBuilderContext {
         for (GeneratedFieldFilter<?> fieldFilter: fieldFilters.values()) {
             schemaBuilder.additionalType(fieldFilter.build(this));
         }
+        for (GraphQLObjectType unmanagedType: unmanagedTypes) {
+            schemaBuilder.additionalType(unmanagedType);
+        }
 
         final GraphQLObjectType rootQueryObject = buildRootQueryObject();
         schemaBuilder.query(rootQueryObject);
@@ -382,6 +395,7 @@ final class SchemaBuilderContext {
     // Code registry is where we define our resolvers
     private GraphQLCodeRegistry buildCodeRegistry(GraphQLObjectType rootQueryObject) {
         final GraphQLCodeRegistry.Builder codeRegistry = newCodeRegistry();
+
         for (EntityQueryWiring<?> entityQueryWiring: entityQueryWirings.values()) {
             final FieldCoordinates fieldCoordinates = coordinates(rootQueryObject.getName(), entityQueryWiring.getQueryName());
             if (entityQueryWiring.getQueryType() == EntityQueryType.LIST) {
@@ -392,47 +406,17 @@ final class SchemaBuilderContext {
             }
         }
 
-        codeRegistry.dataFetcher(coordinates("User", "displayName"), new DataFetcher<Object>() {
-
-            @Override
-            public Object get(DataFetchingEnvironment dataFetchingEnvironment) throws Exception {
-                Object xxx = dataFetchingEnvironment.getSource();
-                return null;
-            }
-
-        });
-
-        codeRegistry.dataFetcher(coordinates("FormattedTimestamp", "timestamp_utc"), new DataFetcher<String>(){
-
-            @Override
-            public String get(DataFetchingEnvironment dataFetchingEnvironment) throws Exception {
-                Instant instant = dataFetchingEnvironment.getSource();
-                if (instant == null) {
-                    return null;
-                }
-                return instant.toString();
-            }
-        });
-
-        codeRegistry.dataFetcher(coordinates("FormattedTimestamp", "formattedDayDateTime"), new DataFetcher<String>(){
-
-            private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("EE YYYY-MM-dd HH:mm");
-
-            @Override
-            public String get(DataFetchingEnvironment dataFetchingEnvironment) throws Exception {
-                final Instant instant = dataFetchingEnvironment.getSource();
-                if (instant == null) {
-                    return null;
-                }
-                return dateTimeFormatter.format(LocalDateTime.ofInstant(instant, ZoneId.systemDefault()));
-            }
-        });
-
+        for (Map.Entry<Tuple2<String, String>, DataFetcher<?>> unmanagedDataFetcher: unmanagedDataFetchers.entrySet()) {
+            final String parentTypeName = unmanagedDataFetcher.getKey().v1;
+            final String fieldName = unmanagedDataFetcher.getKey().v2;
+            final DataFetcher<?> dataFetcher = unmanagedDataFetcher.getValue();
+            codeRegistry.dataFetcher(coordinates(parentTypeName, fieldName), dataFetcher);
+        }
 
         return codeRegistry.build();
     }
 
     public <T> T convertInput(TypeLiteral<T> type, Object object) {
-        return schema.getTypeConverter().convertObjectToType(type, object);
+        return typeConverter.convertObjectToType(type, object);
     }
 }
