@@ -343,6 +343,9 @@ final class QueryBuilderImpl implements QueryBuilder {
     @SuppressWarnings("squid:S1221") // Methods should not be named "tostring", "hashcode" or "equal"
     public Predicate equal(Expression<?> x, Object y) {
         requireNonNull(x);
+        if (y == null) {
+            return isNull(x);
+        }
         return criteriaBuilder.equal(wrapPredicateIfNecessary(x), y);
     }
 
@@ -362,6 +365,9 @@ final class QueryBuilderImpl implements QueryBuilder {
     @Override
     public Predicate notEqual(Expression<?> x, Object y) {
         requireNonNull(x);
+        if (y == null) {
+            return isNotNull(x);
+        }
         return criteriaBuilder.notEqual(wrapPredicateIfNecessary(x), y);
     }
 

@@ -1,6 +1,7 @@
 package org.grapple.schema.impl;
 
 import static graphql.schema.GraphQLInputObjectField.newInputObjectField;
+import static graphql.schema.GraphQLTypeUtil.unwrapNonNull;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.entityFilterCustomWiring;
 
@@ -124,7 +125,7 @@ final class EntityFilterItemDefinitionImpl<X, T> implements EntityFilterItemDefi
         return newInputObjectField()
                 .name(fieldName)
                 .description(description)
-                .type(graphQLType)
+                .type((GraphQLInputType) unwrapNonNull(graphQLType))
                 .build();
     }
 

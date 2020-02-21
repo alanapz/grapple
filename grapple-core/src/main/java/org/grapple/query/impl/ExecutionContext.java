@@ -14,7 +14,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.Tuple;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Expression;
+import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import org.grapple.query.EntityContext;
 import org.grapple.query.EntityField;
@@ -171,7 +171,7 @@ final class ExecutionContext {
 
         private final EntityJoin<?, X> joinedBy;
 
-        private Expression<Boolean> entityExistsPath;
+        private final Predicate entityExistsPath;
 
         private EntityExistsResultCallback(FetchSet<X> fetchSet, AbstractEntityContextImpl<X> entityCtx) {
             this.fetchSet = requireNonNull(fetchSet, "fetchSet");

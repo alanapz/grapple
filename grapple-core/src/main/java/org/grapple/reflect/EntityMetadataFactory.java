@@ -45,6 +45,9 @@ public final class EntityMetadataFactory {
         if (searchMethodAnnotation(method, FieldNotExported.class).isPresent()) {
             return null;
         }
+        if (!searchMethodAnnotation(method, GrappleFilter.class).isPresent()) {
+            return null;
+        }
 
         final GrappleFilter grappleFilter = searchMethodAnnotation(method, GrappleFilter.class).orElse(null);
         if (grappleFilter != null && grappleFilter.ignore()) {
