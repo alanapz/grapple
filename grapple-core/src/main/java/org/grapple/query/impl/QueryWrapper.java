@@ -39,9 +39,10 @@ final class QueryWrapper {
         }
     }
 
-    void where(Predicate... predicate) {
-        if (predicate.length > 0) {
-            this.predicates.addAll(Arrays.asList(predicate));
+    void where(Predicate... restrictions) {
+        requireNonNull(restrictions, "restrictions");
+        if (restrictions.length > 0) {
+            this.predicates.addAll(Arrays.asList(restrictions));
             query.where(predicates.toArray(new Predicate[0]));
         }
     }

@@ -115,36 +115,27 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
         if (existing != null) {
             return existing;
         }
-        final AttributeJoinImpl<Y> attributeJoin = new AttributeJoinImpl<>(LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)));
+        final AttributeJoinImpl<Y> attributeJoin = new AttributeJoinImpl<>(entity.get().join(attribute, JoinType.LEFT));
         sharedJoins.put(attribute, attributeJoin);
         return attributeJoin;
-    }
-
-    @Override
-    @Deprecated
-    public <Y> AttributeJoin<Y> joinUnshared(SingularAttribute<X, Y> attribute) {
-        requireNonNull(attribute, "attribute");
-        return new AttributeJoinImpl<>(LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)));
     }
 
     @Override
     public <Y> AttributeJoin<Y> joinUnshared(SingularAttribute<X, Y> attribute, Function<Join<X, Y>, Predicate> joinBuilder) {
         requireNonNull(attribute, "attribute");
         requireNonNull(joinBuilder, "joinBuilder");
-        return new AttributeJoinImpl<>(LazyValue.of(() -> {
-            final Join<X, Y> join = entity.get().join(attribute, JoinType.LEFT);
-            join.on(joinBuilder.apply(join));
-            return join;
-        }));
+        final Join<X, Y> join = entity.get().join(attribute, JoinType.LEFT);
+        join.on(joinBuilder.apply(join));
+        return new AttributeJoinImpl<>(join);
     }
 
     @Override
     public <Y> AttributeJoin<Y> joinUnshared(SetAttribute<X, Y> attribute, Function<Join<X, Y>, Predicate> joinBuilder) {
         requireNonNull(attribute, "attribute");
         requireNonNull(joinBuilder, "joinBuilder");
-        final Join<X, Y> join = entity.get().join(attribute, JoinType.LEFT); // Eager join, as Hibernate doesn't seem to like delayed evaluation
+        final Join<X, Y> join = entity.get().join(attribute, JoinType.LEFT);
         join.on(joinBuilder.apply(join));
-        return new AttributeJoinImpl<>(LazyValue.fixed(join));
+        return new AttributeJoinImpl<>(join);
     }
 
     @Override
@@ -177,9 +168,9 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    public void addRestriction(Predicate restriction) {
-        requireNonNull(restriction, "restriction");
-        queryWrapper.where(restriction);
+    public void addRestriction(Predicate... restrictions) {
+        requireNonNull(restrictions, "restrictions");
+        queryWrapper.where(restrictions);
     }
 
     @Override
@@ -204,55 +195,60 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
         return requireNonNull(function, "function").apply(this);
     }
 
-    private static final class AttributeJoinImpl<Y> implements AttributeJoin<Y> {
+    private final class AttributeJoinImpl<Y> implements AttributeJoin<Y> {
 
-        private final LazyValue<Join<?, Y>> entity;
+        private final Join<?, Y> entity;
 
         private final Map<Attribute<?, ?>, AttributeJoin<?>> attributeJoins = new HashMap<>();
 
-        private AttributeJoinImpl(LazyValue<Join<?, Y>> entity) {
+        private AttributeJoinImpl(Join<?, Y> entity) {
             this.entity = requireNonNull(entity, "entity");
         }
 
         @Override
         public Join<?, Y> get() {
-            return entity.get();
+            return getEntity();
+        }
+
+        @Override
+        public Join<?, Y> getEntity() {
+            return entity;
         }
 
         @Override
         public <T> Path<T> get(SingularAttribute<? super Y, T> attribute) {
             requireNonNull(attribute, "attribute");
-            return entity.get().get(attribute);
+            return entity.get(attribute);
         }
 
         @Override
-        public <Z> AttributeJoin<Z> join(SingularAttribute<Y, Z> attribute) {
+        public <Z> AttributeJoin<Z> joinShared(SingularAttribute<Y, Z> attribute) {
             requireNonNull(attribute, "attribute");
             final @SuppressWarnings("unchecked") AttributeJoin<Z> existing = (AttributeJoin<Z>) attributeJoins.get(attribute);
             if (existing != null) {
                 return existing;
             }
-            final AttributeJoin<Z> attributeJoin = new AttributeJoinImpl<>(LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)));
+            final AttributeJoin<Z> attributeJoin = new AttributeJoinImpl<>(entity.join(attribute, JoinType.LEFT));
             attributeJoins.put(attribute, attributeJoin);
             return attributeJoin;
         }
 
         @Override
-        public <Z> AttributeJoin<Z> joinUnshared(SingularAttribute<Y, Z> attribute) {
+        public <Z> AttributeJoin<Z> joinUnshared(SingularAttribute<Y, Z> attribute, Function<Join<Y, Z>, Predicate> joinBuilder) {
             requireNonNull(attribute, "attribute");
-            return new AttributeJoinImpl<>(LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT)));
+            requireNonNull(joinBuilder, "joinBuilder");
+            final Join<Y, Z> join = entity.join(attribute, JoinType.LEFT);
+            join.on(joinBuilder.apply(join));
+            return new AttributeJoinImpl<>(join);
         }
 
         @Override
-        public <Z> AttributeJoin<Z> joinUnshared(SetAttribute<Y, Z> attribute, Consumer<Join<Y, Z>> consumer) {
+        public <Z> AttributeJoin<Z> joinUnshared(SetAttribute<Y, Z> attribute, Function<Join<Y, Z>, Predicate> joinBuilder) {
             requireNonNull(attribute, "attribute");
-            return new AttributeJoinImpl<>(LazyValue.of(() -> {
-                final Join<Y, Z> join = entity.get().join(attribute, JoinType.LEFT);
-                if (consumer != null) {
-                    consumer.accept(join);
-                }
-                return join;
-            }));
+            requireNonNull(joinBuilder, "joinBuilder");
+            final Join<Y, Z> join = entity.join(attribute, JoinType.LEFT);
+            join.on(joinBuilder.apply(join));
+            return new AttributeJoinImpl<>(join);
         }
     }
 }

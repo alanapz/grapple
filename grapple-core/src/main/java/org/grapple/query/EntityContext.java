@@ -1,6 +1,5 @@
 package org.grapple.query;
 
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.persistence.criteria.CriteriaQuery;
@@ -29,9 +28,6 @@ public interface EntityContext<X> extends Chainable<EntityContext<X>> {
 
     <Y> AttributeJoin<Y> joinShared(SingularAttribute<X, Y> attribute);
 
-    @Deprecated
-    <Y> AttributeJoin<Y> joinUnshared(SingularAttribute<X, Y> attribute);
-
     <Y> AttributeJoin<Y> joinUnshared(SingularAttribute<X, Y> attribute, Function<Join<X, Y>, Predicate> joinBuilder);
 
     <Y> AttributeJoin<Y> joinUnshared(SetAttribute<X, Y> attribute, Function<Join<X, Y>, Predicate> joinBuilder);
@@ -42,7 +38,7 @@ public interface EntityContext<X> extends Chainable<EntityContext<X>> {
 
     <T> NonQuerySelection<T> addNonQuerySelection(NonQueryField<X, T> nonQueryField);
 
-    void addRestriction(Predicate predicate);
+    void addRestriction(Predicate... restrictions);
 
     CriteriaQuery<?> getQuery();
 
@@ -50,12 +46,14 @@ public interface EntityContext<X> extends Chainable<EntityContext<X>> {
 
     interface AttributeJoin<Y> extends Supplier<Join<?, Y>> {
 
+        Join<?, Y> getEntity();
+
         <T> Path<T> get(SingularAttribute<? super Y, T> attribute);
 
-        <Z> AttributeJoin<Z> join(SingularAttribute<Y, Z> attribute);
+        <Z> AttributeJoin<Z> joinShared(SingularAttribute<Y, Z> attribute);
 
-        <Z> AttributeJoin<Z> joinUnshared(SingularAttribute<Y, Z> attribute);
+        <Z> AttributeJoin<Z> joinUnshared(SingularAttribute<Y, Z> attribute, Function<Join<Y, Z>, Predicate> joinBuilder);
 
-        <Z> AttributeJoin<Z> joinUnshared(SetAttribute<Y, Z> attribute, Consumer<Join<Y, Z>> consumer);
+        <Z> AttributeJoin<Z> joinUnshared(SetAttribute<Y, Z> attribute, Function<Join<Y, Z>, Predicate> joinBuilder);
     }
 }

@@ -123,9 +123,7 @@ final class ExecutionContext {
             // https://github.com/alanapz/grapple/issues/1
             // If we have at least one selection, then force the selection of primary key IS NOT NULL
             // This is so we can detect null fields versus null joins
-            if (fetchSet.getJoinedBy() != null) {
-                fieldCallbacks.add(new EntityExistsResultCallback<>(fetchSet, entityContext));
-            }
+            fieldCallbacks.add(new EntityExistsResultCallback<>(fetchSet, entityContext));
 
             for (EntityField<X, ?> rawField: fetchSet.getSelections()) {
                 final @SuppressWarnings("unchecked") EntityField<X, Q1> field = (EntityField<X, Q1>) rawField;
@@ -169,20 +167,20 @@ final class ExecutionContext {
 
         private final FetchSet<X> fetchSet;
 
-        private final EntityJoin<?, X> joinedBy;
-
         private final Predicate entityExistsPath;
+
+        private final EntityJoin<?, X> joinedBy;
 
         private EntityExistsResultCallback(FetchSet<X> fetchSet, AbstractEntityContextImpl<X> entityCtx) {
             this.fetchSet = requireNonNull(fetchSet, "fetchSet");
-            this.joinedBy = requireNonNull(fetchSet.getJoinedBy(), "joinedBy");
             this.entityExistsPath = entityCtx.addSelection(queryBuilder.isNotNull(entityCtx.getEntity()));
+            this.joinedBy = fetchSet.getJoinedBy();
         }
 
         @Override
         public void execute(Tuple row, TabularResultRowImpl resultItem) {
             final boolean entityExists =  requireNonNull(row.get(entityExistsPath), "entityExistsPath");
-            if (!entityExists && !joinedBy.getResultType().isNullAllowed() && resultItem.isExists(fetchSet.getFetchParent())) {
+            if (joinedBy != null && !joinedBy.getResultType().isNullAllowed() && !entityExists && resultItem.isExists(fetchSet.getFetchParent())) {
                 throw new NullNotAllowedException(format("Null result for non-null join: %s", QueryImplUtils.resolveFullName(fetchSet)));
             }
             if (entityExists) {
@@ -207,6 +205,11 @@ final class ExecutionContext {
 
         @Override
         public void execute(Tuple row, TabularResultRowImpl resultItem) {
+            // Dn not even bother retrieving result if fetchset isn't loaded
+            if (!resultItem.isExists(fetchSet)) {
+                resultItem.setValue(fetchSet, field, null);
+                return;
+            }
             final T result = resultHandler.apply(row);
             // Null-checking: Throw error if result is null, yet field type doesn't allow nulls, and we are not null because our parent wasn't fetched
             if (result == null && !field.getResultType().isNullAllowed() && resultItem.isExists(fetchSet)) {

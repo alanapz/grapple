@@ -323,11 +323,13 @@ final class QueryBuilderImpl implements QueryBuilder {
 
     @Override
     public Predicate isNull(Expression<?> x) {
+        requireNonNull(x, "x");
         return criteriaBuilder.isNull(x);
     }
 
     @Override
     public Predicate isNotNull(Expression<?> x) {
+        requireNonNull(x, "x");
         return criteriaBuilder.isNotNull(x);
     }
 
