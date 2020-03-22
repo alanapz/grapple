@@ -142,11 +142,9 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     public <Y> AttributeJoin<Y> joinUnshared(SetAttribute<X, Y> attribute, Function<Join<X, Y>, Predicate> joinBuilder) {
         requireNonNull(attribute, "attribute");
         requireNonNull(joinBuilder, "joinBuilder");
-        return new AttributeJoinImpl<>(LazyValue.of(() -> {
-            final Join<X, Y> join = entity.get().join(attribute, JoinType.LEFT);
-            join.on(joinBuilder.apply(join));
-            return join;
-        }));
+        final Join<X, Y> join = entity.get().join(attribute, JoinType.LEFT); // Eager join, as Hibernate doesn't seem to like delayed evaluation
+        join.on(joinBuilder.apply(join));
+        return new AttributeJoinImpl<>(LazyValue.fixed(join));
     }
 
     @Override
@@ -176,6 +174,12 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
         final NonQuerySelection<T> nonQuerySelection = nonQueryField.getResolver().get(AbstractEntityContextImpl.this, queryBuilder)::apply;
         nonQuerySelections.put(nonQueryField, nonQuerySelection);
         return nonQuerySelection;
+    }
+
+    @Override
+    public void addRestriction(Predicate restriction) {
+        requireNonNull(restriction, "restriction");
+        queryWrapper.where(restriction);
     }
 
     @Override

@@ -31,6 +31,36 @@ public class UnmanagedQueryDefinitionImpl implements UnmanagedQueryDefinition {
     }
 
     @Override
+    public String getName() {
+        return null;
+    }
+
+    @Override
+    public void setName(String name) {
+
+    }
+
+    @Override
+    public String getDescription() {
+        return null;
+    }
+
+    @Override
+    public void setDescription(String description) {
+
+    }
+
+    @Override
+    public String getDeprecationReason() {
+        return null;
+    }
+
+    @Override
+    public void setDeprecationReason(String deprecationReason) {
+
+    }
+
+    @Override
     public ElementVisibility getVisibility() {
         return visibility;
     }

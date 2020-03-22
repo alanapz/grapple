@@ -2,6 +2,7 @@ package org.grapple.schema.impl;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.grapple.reflect.ReflectUtils.getGenericTypeArgument;
 import static org.grapple.utils.Utils.isNotEmpty;
 import static org.grapple.utils.Utils.toSet;
 import static org.jooq.lambda.Seq.of;
@@ -91,14 +92,14 @@ final class EntitySchemaScannerImpl implements EntitySchemaScanner {
             return;
         }
         if ((value instanceof EntityField<?, ?>) || (value instanceof EntityJoin<?, ?>)) {
-            processEntityFieldOrJoin(source, ReflectUtils.parseEntityFromGenericType(source, type), value);
+            processEntityFieldOrJoin(source, (Class<?>) getGenericTypeArgument(type, 0), value);
         }
         if (value instanceof Collection<?>) {
-            final Type componentType = ReflectUtils.getGenericTypeArgument(type, 0);
+            final Type componentType = getGenericTypeArgument(type, 0);
             ((Collection<?>) value).forEach(childItem -> importDefinition(source, componentType, childItem));
         }
         if (value instanceof Map<?, ?>) {
-            final Type componentType = ReflectUtils.getGenericTypeArgument(type, 1); // (0 = Key, 1 = Value)
+            final Type componentType = getGenericTypeArgument(type, 1); // (0 = Key, 1 = Value)
             ((Map<?, ?>) value).values().forEach(childItem -> importDefinition(source, componentType, childItem));
         }
     }
@@ -293,7 +294,7 @@ final class EntitySchemaScannerImpl implements EntitySchemaScanner {
         // Return type is QueryResultList<XXX> - LIST
         if (QueryResultList.class.equals(ReflectUtils.getRawTypeFor(returnType))) {
             // Make sure generic type matches entity type
-            final Type queryResultListType = ReflectUtils.getGenericTypeArgument(returnType, 0);
+            final Type queryResultListType = getGenericTypeArgument(returnType, 0);
             if (!entityClass.equals(ReflectUtils.getRawTypeFor(queryResultListType))) {
                 throw new DefinitionImportException(format("Unexpected QueryResultList parameter type: %s", queryResultListType), method);
             }
@@ -302,7 +303,7 @@ final class EntitySchemaScannerImpl implements EntitySchemaScanner {
         // Return type is QueryResultRow<XXX> - SCALAR_NON_NULL
         if (QueryResultRow.class.equals(ReflectUtils.getRawTypeFor(returnType))) {
             // Make sure generic type matches entity type
-            final Type queryResultRowType = ReflectUtils.getGenericTypeArgument(returnType, 0);
+            final Type queryResultRowType = getGenericTypeArgument(returnType, 0);
             if (!entityClass.equals(ReflectUtils.getRawTypeFor(queryResultRowType))) {
                 throw new DefinitionImportException(format("Unexpected QueryResultRow parameter type: %s", queryResultRowType), method);
             }
@@ -311,11 +312,11 @@ final class EntitySchemaScannerImpl implements EntitySchemaScanner {
         // Return type is Optional<QueryResultRow<XXX>> - SCALAR NULL
         if (Optional.class.equals(ReflectUtils.getRawTypeFor(returnType))) {
             // Make sure generic type matches entity type
-            final Type optionalType = ReflectUtils.getGenericTypeArgument(returnType, 0);
+            final Type optionalType = getGenericTypeArgument(returnType, 0);
             if (!QueryResultRow.class.equals(ReflectUtils.getRawTypeFor(optionalType))) {
                 throw new DefinitionImportException(format("Unexpected Optional parameter type: %s", optionalType), method);
             }
-            final Type queryResultRowType = ReflectUtils.getGenericTypeArgument(optionalType, 0);
+            final Type queryResultRowType = getGenericTypeArgument(optionalType, 0);
             if (!entityClass.equals(ReflectUtils.getRawTypeFor(queryResultRowType))) {
                 throw new DefinitionImportException(format("Unexpected QueryResultRow parameter type: %s", queryResultRowType), method);
             }

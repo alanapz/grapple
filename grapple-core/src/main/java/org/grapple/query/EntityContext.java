@@ -42,6 +42,8 @@ public interface EntityContext<X> extends Chainable<EntityContext<X>> {
 
     <T> NonQuerySelection<T> addNonQuerySelection(NonQueryField<X, T> nonQueryField);
 
+    void addRestriction(Predicate predicate);
+
     CriteriaQuery<?> getQuery();
 
     <T> T getQueryParameter(QueryParameter<T> parameter);

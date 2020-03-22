@@ -1,11 +1,12 @@
 package org.grapple.reflect;
 
+import static graphql.schema.GraphQLNonNull.nonNull;
+import static graphql.schema.GraphQLTypeUtil.isNonNull;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.reflect.ClassLiteral.classLiteral;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -16,7 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.grapple.schema.DefinitionImportException;
+import graphql.schema.GraphQLType;
 import org.grapple.utils.NoDuplicatesMap;
 import org.grapple.utils.UnexpectedException;
 import org.reflections.Reflections;
@@ -32,6 +33,16 @@ public final class ReflectUtils {
 
     private ReflectUtils() {
 
+    }
+
+    public static GraphQLType wrapNonNullIfNecessary(GraphQLType unwrappedType) {
+        requireNonNull(unwrappedType, "unwrappedType");
+        return (isNonNull(unwrappedType) ? unwrappedType : nonNull(unwrappedType));
+    }
+
+    public static GraphQLType wrapNonNullIfNecessary(GraphQLType unwrappedType, boolean wrapNonNullIfNecessary) {
+        requireNonNull(unwrappedType, "unwrappedType");
+        return (wrapNonNullIfNecessary ? wrapNonNullIfNecessary(unwrappedType) : unwrappedType);
     }
 
     @SuppressWarnings("unchecked")
@@ -80,16 +91,6 @@ public final class ReflectUtils {
         return allClasses;
     }
 
-    public static Set<Method> getAllDefinitionsOf(Method method) {
-        requireNonNull(method, "method");
-        // Returns the method and all of it's declarations (in all superclasses and interfaces)
-        final Set<Method> allMethods = new LinkedHashSet<>();
-        for (Class<?> clazz: getAllSuperClassesOf(method.getDeclaringClass())) {
-            lookupDeclaredMethod(clazz, method.getName(), method.getParameterTypes()).ifPresent(allMethods::add);
-        }
-        return allMethods;
-    }
-
     public static Optional<Method> lookupDeclaredMethod(Class<?> clazz, String name, Class<?>[] parameterTypes) {
         requireNonNull(clazz, "clazz");
         requireNonNull(name, "name");
@@ -100,6 +101,16 @@ public final class ReflectUtils {
         catch (NoSuchMethodException e) {
             return Optional.empty();
         }
+    }
+
+    public static Set<Method> getAllDefinitionsOf(Method method) {
+        requireNonNull(method, "method");
+        // Returns the method and all of it's declarations (in all superclasses and interfaces)
+        final Set<Method> allMethods = new LinkedHashSet<>();
+        for (Class<?> clazz: getAllSuperClassesOf(method.getDeclaringClass())) {
+            lookupDeclaredMethod(clazz, method.getName(), method.getParameterTypes()).ifPresent(allMethods::add);
+        }
+        return allMethods;
     }
 
     public static <A extends Annotation> Optional<A> searchMethodAnnotation(Method initial, Class<A> aClazz) {
@@ -145,24 +156,6 @@ public final class ReflectUtils {
             // Library is buggy - sometimes if no results found, throws exception
             return Collections.emptySet();
         }
-    }
-
-    public static Class<?> parseEntityFromGenericType(Field source, Type entityFieldOrJoin) {
-        requireNonNull(source, "source");
-        requireNonNull(entityFieldOrJoin, "entityFieldOrJoin");
-        // We assume in an entity declaration, the first type parameter is the entity
-        if (!(entityFieldOrJoin instanceof ParameterizedType)) {
-            throw new DefinitionImportException(format("Unexpected type for: %s", source));
-        }
-        final ParameterizedType parameterizedType = (ParameterizedType) entityFieldOrJoin;
-        if (parameterizedType.getActualTypeArguments().length != 2) {
-            throw new DefinitionImportException(format("Unexpected type arguments for: %s", source));
-        }
-        final Type firstTypeArgument = parameterizedType.getActualTypeArguments()[0];
-        if (!(firstTypeArgument instanceof Class<?>)) {
-            throw new DefinitionImportException(format("Unexpected type arguments for: %s", source));
-        }
-        return (Class<?>) firstTypeArgument;
     }
 
     @SuppressWarnings("unchecked")
