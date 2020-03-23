@@ -2,7 +2,9 @@ package org.grapple.schema.impl;
 
 import static graphql.schema.FieldCoordinates.coordinates;
 import static graphql.schema.GraphQLCodeRegistry.newCodeRegistry;
+import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
 import static graphql.schema.GraphQLObjectType.newObject;
+import static graphql.schema.GraphQLTypeReference.typeRef;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.FieldFilterWiring.fieldFilterWiring;
@@ -16,6 +18,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import graphql.language.Field;
 import graphql.language.SelectionSet;
 import graphql.schema.DataFetcher;
@@ -102,6 +106,12 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
     private final Map<String, GraphQLFieldDefinition> rootQueryFields = new NoDuplicatesMap<>();
 
     private final String rootQueryTypeName;
+
+    private final String multipleQueriesFieldName = "multipleQueries";
+
+    private final String multipleQueriesTypeName = "MultipleQueries";
+
+    private final List<String> multipleQueriesChildFieldNames = IntStream.range(1, 20).mapToObj(v -> String.format("_%d", v)).collect(Collectors.toList());
 
     private final SchemaBuilderElementVisibility schemaBuilderElementVisibility;
 
@@ -432,9 +442,9 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
             schemaBuilder.additionalType(unmanagedType);
         }
 
-        final GraphQLObjectType rootQueryObject = buildRootQueryObject();
-        schemaBuilder.query(rootQueryObject);
-        schemaBuilder.codeRegistry(buildCodeRegistry(rootQueryObject));
+        schemaBuilder.query(buildRootQueryObject());
+        schemaBuilder.additionalType(buildMultipleQueriesObject());
+        schemaBuilder.codeRegistry(buildCodeRegistry());
     }
 
     // Query field - the root object of the GraphQL system
@@ -444,15 +454,28 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
         for (GraphQLFieldDefinition rootQueryField: rootQueryFields.values()) {
             queryObjectBuilder.field(rootQueryField);
         }
+        queryObjectBuilder.field(newFieldDefinition().name(multipleQueriesFieldName).type(typeRef(multipleQueriesTypeName)));
         return queryObjectBuilder.build();
     }
 
+    // Also build synthetic "subquery" type (used as a hack to permit multiple queries, and multiple times the same query)
+    private GraphQLObjectType buildMultipleQueriesObject() {
+        final GraphQLObjectType.Builder multipleQueriesObjectBuilder = newObject();
+        multipleQueriesObjectBuilder.name(multipleQueriesTypeName);
+        for (String multipleQueriesChildFieldName: multipleQueriesChildFieldNames) {
+            multipleQueriesObjectBuilder.field(newFieldDefinition()
+                    .name(multipleQueriesChildFieldName)
+                    .type(typeRef(rootQueryTypeName)));
+        }
+        return multipleQueriesObjectBuilder.build();
+    }
+
     // Code registry is where we define our resolvers
-    private GraphQLCodeRegistry buildCodeRegistry(GraphQLObjectType rootQueryObject) {
+    private GraphQLCodeRegistry buildCodeRegistry() {
         final GraphQLCodeRegistry.Builder codeRegistry = newCodeRegistry();
 
         for (EntityQueryWiring<?> entityQueryWiring: entityQueryWirings.values()) {
-            final FieldCoordinates fieldCoordinates = coordinates(rootQueryObject.getName(), entityQueryWiring.getQueryName());
+            final FieldCoordinates fieldCoordinates = coordinates(rootQueryTypeName, entityQueryWiring.getQueryName());
             if (entityQueryWiring.getQueryType() == EntityQueryType.LIST) {
                 codeRegistry.dataFetcher(fieldCoordinates, new EntityListQueryDataFetcher<>(this, entityQueryWiring.getEntityClass(), entityQueryWiring.getQueryName(), null));
             }
@@ -463,6 +486,12 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
 
         for (Map.Entry<FieldCoordinates, DataFetcher<?>> unmanagedDataFetcher: unmanagedDataFetchers.entrySet()) {
             codeRegistry.dataFetcher(unmanagedDataFetcher.getKey(), unmanagedDataFetcher.getValue());
+        }
+
+        codeRegistry.dataFetcher(coordinates(rootQueryTypeName, multipleQueriesFieldName), (DataFetchingEnvironment environment) -> new Object());
+
+        for (String multipleQueriesChildFieldName: multipleQueriesChildFieldNames) {
+            codeRegistry.dataFetcher(coordinates(multipleQueriesTypeName, multipleQueriesChildFieldName), (DataFetchingEnvironment environment) -> new Object());
         }
 
         return codeRegistry.build();

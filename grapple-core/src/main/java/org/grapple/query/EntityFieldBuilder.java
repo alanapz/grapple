@@ -75,145 +75,154 @@ public final class EntityFieldBuilder {
 
     public static <X, T> QueryField<X, T> attributeField(SingularAttribute<X, T> attribute, Consumer<AttributeFieldBuilder<X, T>> fieldBuilder) {
         requireNonNull(attribute, "attribute");
-        final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(fieldBuilder);
-        final String name = coalesce(builder.name, attribute.getName());
-        final EntityResultType<T> resultType = entityResultType(attribute.getJavaType(), coalesce(builder.nullAllowed, attribute.isOptional()));
-        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
-        metadata.putDefault(EntityMetadataKeys.Description, QueryUtils.getDefaultDescription(attribute));
-        metadata.putDefault(EntityMetadataKeys.DeprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
-        return new QueryField<X, T>() {
+        return new LazyQueryField<>(LazyValue.of(() -> {
+            final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(fieldBuilder);
+            final String name = coalesce(builder.name, attribute.getName());
+            final EntityResultType<T> resultType = entityResultType(attribute.getJavaType(), coalesce(builder.nullAllowed, attribute.isOptional()));
+            final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
+            metadata.putDefault(EntityMetadataKeys.Description, QueryUtils.getDefaultDescription(attribute));
+            metadata.putDefault(EntityMetadataKeys.DeprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
 
-            @Override
-            public String getName() {
-                return name;
-            }
+            return new QueryField<X, T>() {
 
-            public Class<X> getEntityType() {
-                return attribute.getDeclaringType().getJavaType();
-            }
+                @Override
+                public String getName() {
+                    return name;
+                }
 
-            @Override
-            public EntityResultType<T> getResultType() {
-                return resultType;
-            }
+                public Class<X> getEntityType() {
+                    return attribute.getDeclaringType().getJavaType();
+                }
 
-            @Override
-            public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                final Path<T> attributePath = ctx.addSelection(getExpression(ctx, queryBuilder));
-                markAsUsed(attributePath);
-                return tuple -> tuple.get(attributePath);
-            }
+                @Override
+                public EntityResultType<T> getResultType() {
+                    return resultType;
+                }
 
-            @Override
-            public Path<T> getExpression(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                return ctx.get(attribute);
-            }
+                @Override
+                public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+                    final Path<T> attributePath = ctx.addSelection(getExpression(ctx, queryBuilder));
+                    markAsUsed(attributePath);
+                    return tuple -> tuple.get(attributePath);
+                }
 
-            @Override
-            public Path<T> getOrderBy(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                return getExpression(ctx, queryBuilder);
-            }
+                @Override
+                public Path<T> getExpression(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+                    return ctx.get(attribute);
+                }
 
-            @Override
-            public <M> M getMetadata(MetadataKey<M> metadataKey) {
-                return metadata.get(metadataKey);
-            }
+                @Override
+                public Path<T> getOrderBy(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+                    return getExpression(ctx, queryBuilder);
+                }
 
-            @Override
-            public String toString() {
-                return format("%s[%s]", name, getResultType());
-            }
-        };
+                @Override
+                public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                    return metadata.get(metadataKey);
+                }
+
+                @Override
+                public String toString() {
+                    return format("%s[%s]", name, getResultType());
+                }
+            };
+        }));
     }
 
     public static <X, T> QueryField<X, T> expressionField(Consumer<ExpressionFieldBuilder<X, T>> fieldBuilder) {
         requireNonNull(fieldBuilder, "fieldBuilder");
-        final ExpressionFieldBuilder<X, T> builder = new ExpressionFieldBuilder<X, T>().apply(fieldBuilder);
-        final String name = requireNonNullArgument(builder.name, "name required");
-        final EntityResultType<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
-        final ExpressionResolver<X, T> expressionResolver = requireNonNullArgument(builder.expression, "expressionResolver required");
-        final ExpressionOrderByResolver<X> orderBy = coalesce(builder.orderBy, expressionResolver::get);
-        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
-        return new QueryField<X, T>() {
+        return new LazyQueryField<>(LazyValue.of(() -> {
 
-            @Override
-            public String getName() {
-                return name;
-            }
+            final ExpressionFieldBuilder<X, T> builder = new ExpressionFieldBuilder<X, T>().apply(fieldBuilder);
+            final String name = requireNonNullArgument(builder.name, "name required");
+            final EntityResultType<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
+            final ExpressionResolver<X, T> expressionResolver = requireNonNullArgument(builder.expression, "expressionResolver required");
+            final ExpressionOrderByResolver<X> orderBy = coalesce(builder.orderBy, expressionResolver::get);
+            final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
 
-            @Override
-            public EntityResultType<T> getResultType() {
-                return resultType;
-            }
+            return new QueryField<X, T>() {
 
-            @Override
-            public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                final Expression<T> expression = ctx.addSelection(getExpression(ctx, queryBuilder));
-                markAsUsed(expression); // Do not remove
-                return tuple -> tuple.get(expression);
-            }
+                @Override
+                public String getName() {
+                    return name;
+                }
 
-            @Override
-            public Expression<T> getExpression(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                return queryBuilder.wrapPredicateIfNecessary(expressionResolver.get(ctx, queryBuilder));
-            }
+                @Override
+                public EntityResultType<T> getResultType() {
+                    return resultType;
+                }
 
-            @Override
-            public Expression<?> getOrderBy(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                return orderBy.get(ctx, queryBuilder);
-            }
+                @Override
+                public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+                    final Expression<T> expression = ctx.addSelection(getExpression(ctx, queryBuilder));
+                    markAsUsed(expression); // Do not remove
+                    return tuple -> tuple.get(expression);
+                }
 
-            @Override
-            public <M> M getMetadata(MetadataKey<M> metadataKey) {
-                return metadata.get(metadataKey);
-            }
+                @Override
+                public Expression<T> getExpression(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+                    return queryBuilder.wrapPredicateIfNecessary(expressionResolver.get(ctx, queryBuilder));
+                }
 
-            @Override
-            public String toString() {
-                return format("%s[%s]", name, resultType);
-            }
-        };
+                @Override
+                public Expression<?> getOrderBy(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+                    return orderBy.get(ctx, queryBuilder);
+                }
+
+                @Override
+                public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                    return metadata.get(metadataKey);
+                }
+
+                @Override
+                public String toString() {
+                    return format("%s[%s]", name, resultType);
+                }
+            };
+        }));
     }
 
     public static <X, T> NonQueryField<X, T> nonQueryField(Consumer<NonQueryFieldBuilder<X, T>> fieldBuilder) {
         requireNonNull(fieldBuilder, "fieldBuilder");
-        final NonQueryFieldBuilder<X, T> builder = new NonQueryFieldBuilder<X, T>().apply(fieldBuilder);
-        final String name = requireNonNullArgument(builder.name, "name required");
-        final EntityResultType<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
-        final NonQueryFieldResolver<X, T> resolver = requireNonNullArgument(builder.resolver, "resolver required");
-        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
-        return new NonQueryField<X, T>() {
+        return new LazyNonQueryField<>(LazyValue.of(() -> {
+            final NonQueryFieldBuilder<X, T> builder = new NonQueryFieldBuilder<X, T>().apply(fieldBuilder);
+            final String name = requireNonNullArgument(builder.name, "name required");
+            final EntityResultType<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
+            final NonQueryFieldResolver<X, T> resolver = requireNonNullArgument(builder.resolver, "resolver required");
+            final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
+            return new NonQueryField<X, T>() {
 
-            @Override
-            public String getName() {
-                return name;
-            }
+                @Override
+                public String getName() {
+                    return name;
+                }
 
-            @Override
-            public EntityResultType<T> getResultType() {
-                return resultType;
-            }
+                @Override
+                public EntityResultType<T> getResultType() {
+                    return resultType;
+                }
 
-            @Override
-            public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
-                return ctx.addNonQuerySelection(this)::get;
-            }
+                @Override
+                public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+                    return ctx.addNonQuerySelection(this)::get;
+                }
 
-            @Override
-            public NonQueryFieldResolver<X, T> getResolver() {
-                return resolver;
-            }
+                @Override
+                public NonQueryFieldResolver<X, T> getResolver() {
+                    return resolver;
+                }
 
-            @Override
-            public <M> M getMetadata(MetadataKey<M> metadataKey) {
-                return metadata.get(metadataKey);
-            }
+                @Override
+                public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                    return metadata.get(metadataKey);
+                }
 
-            @Override
-            public String toString() {
-                return format("%s[%s]", name, resultType);
-            }
-        };
+                @Override
+                public String toString() {
+                    return format("%s[%s]", name, resultType);
+                }
+            };
+        }));
     }
 
     public static <X, T> EntityJoin<X, T> attributeJoin(SingularAttribute<X, T> attribute) {
@@ -222,86 +231,83 @@ public final class EntityFieldBuilder {
 
     public static <X, T> EntityJoin<X, T> attributeJoin(SingularAttribute<X, T> attribute, Consumer<AttributeFieldBuilder<X, T>> joinBuilder) {
         requireNonNull(attribute, "attribute");
-        final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(joinBuilder);
-        final String name = coalesce(builder.name, attribute.getName());
-        final boolean nullAllowed = coalesce(builder.nullAllowed, attribute.isOptional());
-        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
-        metadata.putDefault(EntityMetadataKeys.Description, QueryUtils.getDefaultDescription(attribute));
-        metadata.putDefault(EntityMetadataKeys.DeprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
-        return new EntityJoin<X, T>() {
+        return new LazyEntityJoin<>(LazyValue.of(() -> {
+            final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(joinBuilder);
+            final String name = coalesce(builder.name, attribute.getName());
+            final boolean nullAllowed = coalesce(builder.nullAllowed, attribute.isOptional());
+            final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
+            metadata.putDefault(EntityMetadataKeys.Description, QueryUtils.getDefaultDescription(attribute));
+            metadata.putDefault(EntityMetadataKeys.DeprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
+            return new EntityJoin<X, T>() {
 
-            @Override
-            public String getName() {
-                return name;
-            }
+                @Override
+                public String getName() {
+                    return name;
+                }
 
-            public Class<X> getEntityType() {
-                return attribute.getDeclaringType().getJavaType();
-            }
+                public Class<X> getEntityType() {
+                    return attribute.getDeclaringType().getJavaType();
+                }
 
-            @Override
-            public EntityResultType<T> getResultType() {
-                return entityResultType(attribute.getJavaType(), nullAllowed);
-            }
+                @Override
+                public EntityResultType<T> getResultType() {
+                    return entityResultType(attribute.getJavaType(), nullAllowed);
+                }
 
-            @Override
-            public Supplier<Join<?, T>> join(EntityContext<X> ctx, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity) {
-                return LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT));
-            }
+                @Override
+                public Supplier<Join<?, T>> join(EntityContext<X> ctx, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity) {
+                    return LazyValue.of(() -> entity.get().join(attribute, JoinType.LEFT));
+                }
 
-            @Override
-            public <M> M getMetadata(MetadataKey<M> metadataKey) {
-                return metadata.get(metadataKey);
-            }
+                @Override
+                public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                    return metadata.get(metadataKey);
+                }
 
-            @Override
-            public String toString() {
-                return format("%s[%s]", name, getResultType());
-            }
-        };
-    }
-
-    public static <X, Y> EntityJoin<X, Y> join(String name, EntityResultType<Y> resultType, JoinSupplier<X, Y> supplier) {
-        requireNonNull(name, "name");
-        requireNonNull(resultType, "resultType");
-        requireNonNull(supplier, "supplier");
-        return expressionJoin(fieldBuilder -> fieldBuilder.name(name).resultType(resultType).expression(supplier));
+                @Override
+                public String toString() {
+                    return format("%s[%s]", name, getResultType());
+                }
+            };
+        }));
     }
 
     public static <X, Y> EntityJoin<X, Y> expressionJoin(Consumer<ExpressionJoinBuilder<X, Y>> joinBuilder) {
         requireNonNull(joinBuilder, "joinBuilder");
-        final ExpressionJoinBuilder<X, Y> builder = new ExpressionJoinBuilder<X, Y>().apply(joinBuilder);
-        final String name = requireNonNullArgument(builder.name, "name required");
-        final EntityResultType<Y> resultType = requireNonNullArgument(builder.resultType, "result type required");
-        final JoinSupplier<X, Y> supplier  = requireNonNullArgument(builder.expression, "expression required");
-        final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
-        return new EntityJoin<X, Y>() {
+        return new LazyEntityJoin<>(LazyValue.of(() -> {
+            final ExpressionJoinBuilder<X, Y> builder = new ExpressionJoinBuilder<X, Y>().apply(joinBuilder);
+            final String name = requireNonNullArgument(builder.name, "name required");
+            final EntityResultType<Y> resultType = requireNonNullArgument(builder.resultType, "result type required");
+            final JoinSupplier<X, Y> supplier = requireNonNullArgument(builder.expression, "expression required");
+            final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
+            return new EntityJoin<X, Y>() {
 
-            @Override
-            public String getName() {
-                return name;
-            }
+                @Override
+                public String getName() {
+                    return name;
+                }
 
-            @Override
-            public EntityResultType<Y> getResultType() {
-                return resultType;
-            }
+                @Override
+                public EntityResultType<Y> getResultType() {
+                    return resultType;
+                }
 
-            @Override
-            public Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity) {
-                return supplier.join(ctx, queryBuilder);
-            }
+                @Override
+                public Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity) {
+                    return supplier.join(ctx, queryBuilder);
+                }
 
-            @Override
-            public <M> M getMetadata(MetadataKey<M> metadataKey) {
-                return metadata.get(metadataKey);
-            }
+                @Override
+                public <M> M getMetadata(MetadataKey<M> metadataKey) {
+                    return metadata.get(metadataKey);
+                }
 
-            @Override
-            public String toString() {
-                return format("%s[%s]", name, resultType);
-            }
-        };
+                @Override
+                public String toString() {
+                    return format("%s[%s]", name, resultType);
+                }
+            };
+        }));
     }
 
     public static final class LiteralFieldBuilder<X, T> implements Chainable<LiteralFieldBuilder<X, T>> {
@@ -536,4 +542,122 @@ public final class EntityFieldBuilder {
             return requireNonNull(function, "function").apply(this);
         }
     }
+
+    private static final class LazyQueryField<X, T> implements QueryField<X, T> {
+
+        private final LazyValue<QueryField<X, T>> source;
+
+        LazyQueryField(LazyValue<QueryField<X, T>> source) {
+            this.source = requireNonNull(source, "source");
+        }
+
+        @Override
+        public String getName() {
+            return source.get().getName();
+        }
+
+        @Override
+        public EntityResultType<T> getResultType() {
+            return source.get().getResultType();
+        }
+
+        @Override
+        public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            return source.get().prepare(ctx, queryBuilder);
+        }
+
+        @Override
+        public Expression<T> getExpression(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            return source.get().getExpression(ctx, queryBuilder);
+        }
+
+        @Override
+        public Expression<?> getOrderBy(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            return source.get().getOrderBy(ctx, queryBuilder);
+        }
+
+        @Override
+        public <M> M getMetadata(MetadataKey<M> metadataKey) {
+            return source.get().getMetadata(metadataKey);
+        }
+
+        @Override
+        public String toString() {
+            return source.get().toString();
+        }
+    }
+
+    private static final class LazyNonQueryField<X, T> implements NonQueryField<X, T> {
+
+        private final LazyValue<NonQueryField<X, T>> source;
+
+        LazyNonQueryField(LazyValue<NonQueryField<X, T>> source) {
+            this.source = requireNonNull(source, "source");
+        }
+
+        @Override
+        public String getName() {
+            return source.get().getName();
+        }
+
+        @Override
+        public EntityResultType<T> getResultType() {
+            return source.get().getResultType();
+        }
+
+        @Override
+        public Function<Tuple, T> prepare(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            return source.get().prepare(ctx, queryBuilder);
+        }
+
+        @Override
+        public NonQueryFieldResolver<X, T> getResolver() {
+            return source.get().getResolver();
+        }
+
+        @Override
+        public <M> M getMetadata(MetadataKey<M> metadataKey) {
+            return source.get().getMetadata(metadataKey);
+        }
+
+        @Override
+        public String toString() {
+            return source.get().toString();
+        }
+    }
+
+    private static final class LazyEntityJoin<X, Y> implements EntityJoin<X, Y> {
+
+        private final LazyValue<EntityJoin<X, Y>> source;
+
+        LazyEntityJoin(LazyValue<EntityJoin<X, Y>> source) {
+            this.source = requireNonNull(source, "source");
+        }
+
+        @Override
+        public String getName() {
+            return source.get().getName();
+        }
+
+        @Override
+        public EntityResultType<Y> getResultType() {
+            return source.get().getResultType();
+        }
+
+        @Override
+        public Supplier<Join<?, Y>> join(EntityContext<X> ctx, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity) {
+            return source.get().join(ctx, queryBuilder, entity);
+        }
+
+        @Override
+        public <M> M getMetadata(MetadataKey<M> metadataKey) {
+            return source.get().getMetadata(metadataKey);
+        }
+
+        @Override
+        public String toString() {
+            return source.get().toString();
+        }
+    }
+
 }
