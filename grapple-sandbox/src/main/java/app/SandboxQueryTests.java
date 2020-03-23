@@ -77,7 +77,7 @@ public final class SandboxQueryTests {
         PrettyPrint(query.execute(entityManager, entityRoot(User.class)).asTabular());
     }
 
-    private static void PrettyPrint(TabularResultList results) {
+    public static void PrettyPrint(TabularResultList results) {
         if (results.isEmpty()) {
             return;
         }

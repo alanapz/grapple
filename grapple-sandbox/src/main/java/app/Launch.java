@@ -92,6 +92,7 @@ public class Launch {
         final ExecutionInput executionInput = newExecutionInput().query(query).build();
         System.out.println(format("Query: %s", executionInput.getQuery()));
         final ExecutionResult executionResult = graphQL.execute(executionInput);
+        System.out.println(format("Response: %s", executionResult));
         if (!executionResult.getErrors().isEmpty()) {
             throw new RuntimeException(executionResult.getErrors().toString());
         }

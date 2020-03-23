@@ -5,7 +5,6 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import org.grapple.schema.EntityQueryType;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
@@ -13,8 +12,6 @@ import org.grapple.schema.EntityQueryType;
 public @interface GrappleQuery {
 
     String value() default "";
-
-    EntityQueryType type() default EntityQueryType.DEFAULT;
 
     String description() default "";
 
