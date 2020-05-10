@@ -31,10 +31,6 @@ public interface EntitySchema extends Chainable<EntitySchema> {
 
     <T> void addUnmanagedType(TypeLiteral<T> type, Consumer<UnmanagedTypeDefinition<T>> consumer);
 
-//    void addTypeAlias(String typeAliasName, GraphQLType type);
-
-//    EntitySchema addCustomType(String typeAlias, GraphQLType type);
-
     // EntitySchema addDefaultType(Type javaType, GraphQLType type);
 
     // <X> void addEntityQueryInvoker(String name, Class<X> entityClass, Class<QueryParameters<X>> invokerParams, QueryResolver<X> queryResolver);

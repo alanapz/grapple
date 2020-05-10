@@ -33,8 +33,6 @@ public final class EntityQueryMetadata {
         public String deprecationReason;
 
         public boolean required;
-
-        public String typeAlias;
     }
 
     public static final class EntityQueryMethodMetadata<X> {

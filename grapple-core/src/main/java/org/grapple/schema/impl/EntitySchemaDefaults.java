@@ -1,5 +1,7 @@
 package org.grapple.schema.impl;
 
+import static graphql.Scalars.GraphQLLong;
+import static graphql.Scalars.GraphQLString;
 import static graphql.schema.GraphQLArgument.newArgument;
 import static graphql.schema.GraphQLEnumType.newEnum;
 import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
@@ -10,10 +12,6 @@ import static java.util.Objects.requireNonNull;
 import static org.grapple.reflect.ClassLiteral.classLiteral;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import graphql.Scalars;
 import graphql.schema.GraphQLEnumType;
 import org.grapple.reflect.ClassLiteral;
 import org.grapple.reflect.TypeLiteral;
@@ -68,33 +66,24 @@ final class EntitySchemaDefaults {
 
         schema.addUnmanagedType(classLiteral(Instant.class), instantType -> {
 
-            instantType.addDataFetcher("epochSeconds", environment -> {
-                final Instant source = environment.getSource();
-                return source.getEpochSecond();
-            });
-
-            instantType.addDataFetcher("utc", environment -> {
-                final Instant source = environment.getSource();
-                return source.toString();
-            });
-
-            instantType.addDataFetcher("local", environment -> {
-                final Instant source = environment.getSource();
-                final LocalDateTime localDateTime = LocalDateTime.ofInstant(source, ZoneId.systemDefault());
-                final String pattern = environment.getArgument("pattern");
-                if (pattern == null) {
-                    return localDateTime.toString();
-                }
-                return DateTimeFormatter.ofPattern(pattern).format(localDateTime);
-            });
+            instantType.addDataFetcher("timestamp", environment -> (environment.<Instant> getSource()).toEpochMilli());
+            instantType.addDataFetcher("utc", environment -> DateTimeUtils.formatDateTimeUtc(environment.getSource(), environment.getArgument("pattern")));
+            instantType.addDataFetcher("local", environment -> DateTimeUtils.formatDateTimeLocal(environment.getSource(), schema.getTimeZone(), environment.getArgument("pattern")));
 
             instantType.setTypeBuilder(ctx -> newObject().name("Timestamp")
-                    .field(newFieldDefinition().name("epochSeconds").type(nonNull(Scalars.GraphQLLong)))
-                    .field(newFieldDefinition().name("utc").type(nonNull(Scalars.GraphQLString)))
-                    .field(newFieldDefinition().name("local").type(nonNull(Scalars.GraphQLString)).argument(newArgument()
+                    .field(newFieldDefinition()
+                            .name("timestamp")
+                            .type(nonNull(GraphQLLong))
+                            .description("Milliseconds since UNIX epoch"))
+                    .field(newFieldDefinition().name("utc").type(nonNull(GraphQLString)).argument(newArgument()
                             .name("pattern")
-                            .type(Scalars.GraphQLString)
-                            .description("eg: EE YYYY-MM-dd HH:mm")
+                            .type(GraphQLString)
+                            .description("eg: EE YYYY-MM-dd HH:mm | iso | rfc1123")
+                            .build()))
+                    .field(newFieldDefinition().name("local").type(nonNull(GraphQLString)).argument(newArgument()
+                            .name("pattern")
+                            .type(GraphQLString)
+                            .description("eg: EE YYYY-MM-dd HH:mm | iso | rfc1123")
                             .build()))
                     .build());
         });

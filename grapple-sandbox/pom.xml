@@ -9,7 +9,7 @@
         <dependency>
             <groupId>org.grapple</groupId>
             <artifactId>grapple-core</artifactId>
-            <version>20200202.1</version>
+            <version>20200501.0</version>
         </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>
@@ -56,6 +56,12 @@
             <artifactId>junit-jupiter-api</artifactId>
             <version>RELEASE</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
     <properties>

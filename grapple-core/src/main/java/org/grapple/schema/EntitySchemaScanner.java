@@ -9,8 +9,8 @@ public interface EntitySchemaScanner extends Chainable<EntitySchemaScanner> {
 
     void importDefinitions(Class<?> definitionsClass);
 
-    void importQueries(Object instance);
+    void importOperations(Object instance);
 
-    void importQueries(Object instance, Class<?> instanceClass);
+    void importOperations(Object instance, Class<?> instanceClass);
 
 }

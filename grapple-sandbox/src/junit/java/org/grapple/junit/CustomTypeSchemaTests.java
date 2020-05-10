@@ -40,7 +40,7 @@ public class CustomTypeSchemaTests extends SchemaTestSupport {
         final EntitySchema entitySchema = EntitySchemaProvider.newSchema();
         entitySchema.buildEntitySchemaScanner(new EntitySchemaScannerCallback()).apply(entitySchemaScanner -> {
             entitySchemaScanner.importDefinitions(QueryDefinitions.class, "app", "sandbox");
-            entitySchemaScanner.importQueries(new Object() {
+            entitySchemaScanner.importOperations(new Object() {
 
                 @GrappleQuery
                 public QueryResultList<User> listUsers(RootFetchSet<User> fetches) {

@@ -7,19 +7,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.PARAMETER)
+@Target(ElementType.METHOD)
 @Inherited
-public @interface GrappleParameter {
+public @interface GrappleMutation {
 
     String value() default "";
 
     String description() default "";
 
     String deprecated() default "";
-
-    boolean required() default false;
-
-    ParameterWrapping wrapping() default ParameterWrapping.NONE;
 
     boolean ignore() default false;
 

@@ -1,6 +1,5 @@
 package org.grapple.schema.impl;
 
-import static graphql.schema.GraphQLNonNull.nonNull;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.requireNonNull;
 import static org.jooq.lambda.Seq.seq;
@@ -8,25 +7,16 @@ import static org.jooq.lambda.Seq.seq;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.net.URL;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.OffsetTime;
-import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import graphql.Scalars;
-import graphql.scalars.ExtendedScalars;
+import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
@@ -36,7 +26,6 @@ import org.grapple.query.EntityResultType;
 import org.grapple.reflect.ReflectUtils;
 import org.grapple.reflect.TypeConverter;
 import org.grapple.reflect.TypeLiteral;
-import org.grapple.scalars.GrappleScalars;
 import org.grapple.schema.EntityDefaultNameGenerator;
 import org.grapple.schema.EntityQueryExecutionListener;
 import org.grapple.schema.EntitySchema;
@@ -60,15 +49,19 @@ final class EntitySchemaImpl implements EntitySchema {
 
     private EntityDefaultNameGenerator entityDefaultNameGenerator = EntitySchemaDefaults.defaultNameGenerator();
 
-    /// private static final Map<Enum<?>, GraphQLOutputType> defaultTypeMappings = new HashMap<>();
-
     private final TypeConverter typeConverter = new TypeConverter();
 
     private final Map<String, UnmanagedQueryDefinitionImpl> unmanagedQueries = new NoDuplicatesMap<>();
 
     private final Map<Type, UnmanagedTypeDefinitionImpl<?>> unmanagedTypes = new NoDuplicatesMap<>(new LinkedHashMap<>());
 
-    private static final Map<Type, GraphQLOutputType> defaultTypeMappings = new HashMap<>();
+    private static final Map<Class<?>, GraphQLInputType> inputTypeMappings = new HashMap<>();
+
+    private static final Map<Class<?>, GraphQLOutputType> outputTypeMappings = new HashMap<>();
+
+    public ZoneId getTimeZone() {
+        return ZoneId.systemDefault();
+    }
 
     private static final SchemaPrinter defaultSchemaPrinter = new SchemaPrinter(SchemaPrinter.Options.defaultOptions()
             .includeScalarTypes(true)
@@ -179,14 +172,14 @@ final class EntitySchemaImpl implements EntitySchema {
         return new EntitySchemaScannerImpl(this, scannerCallback);
     }
 
-    <T> FieldFilterDefinitionImpl<T> generateFieldFilter(TypeLiteral<T> fieldType, GraphQLType gqlType) {
-        if (gqlType == null) {
+    <T> FieldFilterDefinitionImpl<T> generateFieldFilter(TypeLiteral<T> fieldType, GraphQLInputType inputType) {
+        if (inputType == null) {
             return null; /// XXX: TODO: FIXME
         }
         if (seq(schemaListeners).anyMatch(schemaListener -> !schemaListener.acceptFieldFilter(fieldType))) {
             return null;
         }
-        final FieldFilterDefinitionImpl<T> fieldFilter = SimpleFieldFilterFactory.constructDefaultFilter(this, fieldType, gqlType);
+        final FieldFilterDefinitionImpl<T> fieldFilter = SimpleFieldFilterFactory.constructDefaultFilter(this, fieldType, inputType);
         if (fieldFilter == null) {
             return null;
         }
@@ -243,8 +236,9 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     public GraphQLOutputType getUnwrappedTypeFor(SchemaBuilderContext ctx, Type type) {
-        if (defaultTypeMappings.containsKey(type)) {
-            return defaultTypeMappings.get(type);
+        final GraphQLOutputType defaultType = DefaultTypeMappings.getDefaultOutputTypeFor(type);
+        if (defaultType != null) {
+            return defaultType;
         }
         if (type instanceof Class<?>) {
             final Class<?> classType = (Class<?>) type;
@@ -285,42 +279,4 @@ final class EntitySchemaImpl implements EntitySchema {
         return defaultSchemaPrinter.print(generate().getSchema());
     }
 
-    static {
-
-        // Primitives
-        defaultTypeMappings.put(boolean.class, nonNull(Scalars.GraphQLBoolean));
-        defaultTypeMappings.put(byte.class, nonNull(Scalars.GraphQLByte));
-        defaultTypeMappings.put(short.class, nonNull(Scalars.GraphQLShort));
-        defaultTypeMappings.put(int.class, nonNull(Scalars.GraphQLInt));
-        defaultTypeMappings.put(long.class, nonNull(Scalars.GraphQLLong));
-        defaultTypeMappings.put(char.class, nonNull(Scalars.GraphQLChar));
-        defaultTypeMappings.put(float.class, nonNull(Scalars.GraphQLFloat));
-        defaultTypeMappings.put(double.class, nonNull(Scalars.GraphQLFloat)); // No "double" type
-
-        // Primitive object wrappers
-        defaultTypeMappings.put(Boolean.class, Scalars.GraphQLBoolean);
-        defaultTypeMappings.put(Byte.class, Scalars.GraphQLByte);
-        defaultTypeMappings.put(Short.class, Scalars.GraphQLShort);
-        defaultTypeMappings.put(Integer.class, Scalars.GraphQLInt);
-        defaultTypeMappings.put(Long.class, Scalars.GraphQLLong);
-        defaultTypeMappings.put(Character.class, Scalars.GraphQLChar);
-        defaultTypeMappings.put(Float.class, Scalars.GraphQLFloat);
-        defaultTypeMappings.put(Double.class, Scalars.GraphQLFloat); // No "Double" type
-
-        defaultTypeMappings.put(String.class, Scalars.GraphQLString);
-
-        defaultTypeMappings.put(UUID.class, Scalars.GraphQLID);
-
-        defaultTypeMappings.put(BigDecimal.class, Scalars.GraphQLBigDecimal);
-        defaultTypeMappings.put(BigInteger.class, Scalars.GraphQLBigInteger);
-
-        defaultTypeMappings.put(LocalDate.class, ExtendedScalars.Date);
-        defaultTypeMappings.put(OffsetDateTime.class, ExtendedScalars.DateTime);
-        defaultTypeMappings.put(Object.class, ExtendedScalars.Object);
-        defaultTypeMappings.put(Locale.class, ExtendedScalars.Locale);
-        defaultTypeMappings.put(OffsetTime.class, ExtendedScalars.Time);
-        defaultTypeMappings.put(URL.class, ExtendedScalars.Url);
-
-        defaultTypeMappings.put(YearMonth.class, GrappleScalars.YearMonthScalar);
-    }
 }

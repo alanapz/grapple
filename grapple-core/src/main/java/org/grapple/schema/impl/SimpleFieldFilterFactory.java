@@ -25,7 +25,7 @@ final class SimpleFieldFilterFactory {
     }
 
     @SuppressWarnings("unchecked")
-    static <T> FieldFilterDefinitionImpl<T> constructDefaultFilter(EntitySchemaImpl schema, TypeLiteral<T> fieldType, GraphQLType gqlType) {
+    static <T> FieldFilterDefinitionImpl<T> constructDefaultFilter(EntitySchemaImpl schema, TypeLiteral<T> fieldType, GraphQLInputType gqlType) {
         requireNonNull(schema, "schema");
         requireNonNull(fieldType, "fieldType");
         requireNonNull(gqlType, "gqlType");

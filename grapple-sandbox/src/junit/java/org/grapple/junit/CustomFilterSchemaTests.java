@@ -24,13 +24,13 @@ public class CustomFilterSchemaTests extends SchemaTestSupport {
 
         entitySchema.buildEntitySchemaScanner(new EntitySchemaScannerCallback()).apply(entitySchemaScanner -> {
             entitySchemaScanner.importDefinitions(QueryDefinitions.class, "app", "sandbox");
-            entitySchemaScanner.importQueries(new UserService(entityManager));
+            entitySchemaScanner.importOperations(new UserService(entityManager));
         });
 
         System.out.println(entitySchema);
         final EntitySchemaResult generatedEntitySchema = Launch.buildGraphQL(entitySchema);
         final GraphQL graphQL = GraphQL.newGraphQL(generatedEntitySchema.getSchemaWithVisibility(toSet("xx", "yyy", "adminx"))).build();
-        Launch.runQuery(graphQL, "query{ listUsers(filter: {alwaysNull: true, filterByUserIdBackwards: [[1,2,3],[4,5,6],[7,8,9]], showOnlyAlan: true, filterByUserName: \"alanx\"}) { results { displayName }}}");
+        Launch.runQuery(graphQL, "query{ listUsers(filter: {alwaysNull: true, filterByUserIdBackwards: [[1,2,3],[4,5,6],[7,8,9]], showOnlyAlan: true, filterByUserName: \"alanx\"}) { __rolesHeld, results { displayName }}}");
 
     }
 

@@ -6,11 +6,15 @@ import static graphql.schema.GraphQLObjectType.newObject;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.FieldFilterWiring.fieldFilterWiring;
+import static org.grapple.schema.impl.SchemaBuilderContextUtils.enumTypeCache;
 import static org.grapple.utils.Utils.readOnlyCopy;
 import static org.jooq.lambda.Seq.seq;
 
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,6 +29,7 @@ import graphql.schema.GraphQLCodeRegistry;
 import graphql.schema.GraphQLEnumType;
 import graphql.schema.GraphQLFieldDefinition;
 import graphql.schema.GraphQLInputType;
+import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
@@ -39,6 +44,7 @@ import org.grapple.query.QueryResultList;
 import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
 import org.grapple.reflect.ClassLiteral;
+import org.grapple.reflect.ReflectUtils;
 import org.grapple.reflect.TypeConverter;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntityDefinition;
@@ -51,6 +57,7 @@ import org.grapple.schema.impl.RuntimeWiring.EntityQueryParameterWiring;
 import org.grapple.schema.impl.RuntimeWiring.EntityQueryWiring;
 import org.grapple.schema.impl.RuntimeWiring.EntitySelectionWiring;
 import org.grapple.schema.impl.RuntimeWiring.FieldFilterWiring;
+import org.grapple.schema.impl.SchemaBuilderContextUtils.EnumTypeCache;
 import org.grapple.utils.NoDuplicatesMap;
 import org.grapple.utils.UnexpectedException;
 import org.jooq.lambda.tuple.Tuple2;
@@ -64,8 +71,6 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
     private final Map<Type, GraphQLObjectType> unmanagedTypes = new NoDuplicatesMap<>(new LinkedHashMap<>());
 
     private final Map<FieldCoordinates, DataFetcher<?>> unmanagedDataFetchers = new NoDuplicatesMap<>();
-
-    private final EnumTypeBuilder enumTypeBuilder;
 
     private final TypeConverter typeConverter;
 
@@ -93,7 +98,9 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
     // [Query Name, Parameter Name] -> EntityQueryParameterWiring
     private final Map<Tuple2<String, String>, EntityQueryParameterWiring<?>> entityQueryParameterWirings = new NoDuplicatesMap<>();
 
-    private final Map<Class<?>, GraphQLEnumType> enumTypeCache = new NoDuplicatesMap<>();
+    private final Map<Type, GraphQLInputType> inputTypeCache = new NoDuplicatesMap<>();
+
+    private final EnumTypeCache enumTypeCache;
 
     private final Map<TypeLiteral<?>, GeneratedFieldFilter<?>> fieldFilters = new NoDuplicatesMap<>();
 
@@ -113,7 +120,7 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
                          String rootQueryTypeName) {
         this.schema = requireNonNull(schema, "schema");
         this.rolesHeld = readOnlyCopy(rolesHeld);
-        this.enumTypeBuilder = requireNonNull(enumTypeBuilder, "enumTypeBuilder");
+        this.enumTypeCache = enumTypeCache(this, enumTypeBuilder);
         this.typeConverter = requireNonNull(typeConverter, "typeConverter");
         this.entityQueryExecutionListeners = requireNonNull(entityQueryExecutionListeners, "entityQueryExecutionListeners").copy();
         this.rootQueryTypeName = requireNonNull(rootQueryTypeName, "rootQueryTypeName");
@@ -310,7 +317,7 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
             return (GeneratedFieldFilter<T>) fieldFilters.get(fieldType);
         }
         // Otherwise, attempt to use user-defined filter if specified, default otherwise
-        final FieldFilterDefinitionImpl<T> filterDefinition = schema.generateFieldFilter(fieldType, schema.getUnwrappedTypeFor(this, clazz));
+        final FieldFilterDefinitionImpl<T> filterDefinition = schema.generateFieldFilter(fieldType, getInputTypeFor(clazz));
         if (filterDefinition == null) {
             return null;
         }
@@ -371,8 +378,57 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
         return Filters.and(filters);
     }
 
-    GraphQLInputType getInputTypeFor(TypeLiteral<?> type) {
+    GraphQLInputType getInputTypeFor(Type type) {
         requireNonNull(type, "type");
+        final GraphQLInputType result = inputTypeCache.computeIfAbsent(type, this::computeInputTypeFor);
+        if (result == null) {
+            throw new TypeNotMappedException(format("Unable to resolve input type for: %s", type.getTypeName()));
+        }
+        return result;
+    }
+
+    private GraphQLInputType computeInputTypeFor(Type type) {
+        requireNonNull(type, "type");
+
+        // Check to see whether we are an existing enum type
+        final GraphQLEnumType enumType = enumTypeCache.buildIfEnumType(type);
+        if (enumType != null) {
+            return enumType;
+        }
+
+        // We may be an array of enums / scalars
+        if (type instanceof Class<?> && ((Class<?>) type).isArray()) {
+            final GraphQLInputType componentType = computeInputTypeFor(((Class<?>) type).getComponentType());
+            if (componentType != null) {
+                return GraphQLList.list(componentType);
+            }
+        }
+
+        // We may also be a List<T> or other collection
+        if (type instanceof ParameterizedType) {
+            final Class<?> klazz = ReflectUtils.getRawTypeFor(type);
+            if (klazz != null && Collection.class.isAssignableFrom(klazz)) {
+                final GraphQLInputType componentType = computeInputTypeFor(ReflectUtils.getGenericTypeArgument(type, 0));
+                if (componentType != null) {
+                    return GraphQLList.list(componentType);
+                }
+            }
+        }
+
+        // Or even a generic array of input types
+        if (type instanceof GenericArrayType) {
+            final GraphQLInputType componentType = computeInputTypeFor(((GenericArrayType) type).getGenericComponentType());
+            if (componentType != null) {
+                return GraphQLList.list(componentType);
+            }
+        }
+
+        // Check to see whether we are an existing scalar type
+        final GraphQLInputType defaultType = DefaultTypeMappings.getDefaultInputTypeFor(type);
+        if (defaultType != null) {
+            return defaultType;
+        }
+
         return null;
     }
 
@@ -384,26 +440,9 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
         if (unmanagedType != null) {
             return unmanagedType;
         }
-
-        if (type instanceof Class<?>) {
-            final Class<?> classType = (Class<?>) type;
-
-            // If type is an enum, look to see whether we have already been created (we need to create a cache to make sure we don't create multiple enum classes)
-            if (Enum.class.isAssignableFrom(classType)) {
-                // If we already generated a corresponding enum class, return typeref directly
-                // Otherwise, generate and add to our list of cache (we will add to the schema via schemaBuilder.additionalType) later on
-
-                final GraphQLEnumType existing = enumTypeCache.get(classType);
-                if (existing != null) {
-                    return existing;
-                }
-                final GraphQLEnumType enumType = enumTypeBuilder.buildEnumType(classType.asSubclass(Enum.class));
-                if (enumType == null) {
-                    return null;
-                }
-                enumTypeCache.put(classType, enumType);
-                return enumType;
-            }
+        final GraphQLEnumType enumType = enumTypeCache.buildIfEnumType(type);
+        if (enumType != null) {
+            return enumType;
         }
 
         throw new TypeNotMappedException(format("Type: %s not mapped", type.getTypeName()));
@@ -419,7 +458,7 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
         for (EntityOrderByDefinitionImpl<?> orderByDefinition: entityOrderByTypes.values()) {
             schemaBuilder.additionalType(orderByDefinition.build(this));
         }
-        for (GraphQLEnumType enumType: enumTypeCache.values()) {
+        for (GraphQLEnumType enumType: enumTypeCache.getAllEnumTypes()) {
             schemaBuilder.additionalType(enumType);
         }
         for (GeneratedEntityFilter<?> entityFilter: entityFilters.values()) {
@@ -432,9 +471,8 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
             schemaBuilder.additionalType(unmanagedType);
         }
 
-        final GraphQLObjectType rootQueryObject = buildRootQueryObject();
-        schemaBuilder.query(rootQueryObject);
-        schemaBuilder.codeRegistry(buildCodeRegistry(rootQueryObject));
+        schemaBuilder.query(buildRootQueryObject());
+        schemaBuilder.codeRegistry(buildCodeRegistry());
     }
 
     // Query field - the root object of the GraphQL system
@@ -447,12 +485,13 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
         return queryObjectBuilder.build();
     }
 
+
     // Code registry is where we define our resolvers
-    private GraphQLCodeRegistry buildCodeRegistry(GraphQLObjectType rootQueryObject) {
+    private GraphQLCodeRegistry buildCodeRegistry() {
         final GraphQLCodeRegistry.Builder codeRegistry = newCodeRegistry();
 
         for (EntityQueryWiring<?> entityQueryWiring: entityQueryWirings.values()) {
-            final FieldCoordinates fieldCoordinates = coordinates(rootQueryObject.getName(), entityQueryWiring.getQueryName());
+            final FieldCoordinates fieldCoordinates = coordinates(rootQueryTypeName, entityQueryWiring.getQueryName());
             if (entityQueryWiring.getQueryType() == EntityQueryType.LIST) {
                 codeRegistry.dataFetcher(fieldCoordinates, new EntityListQueryDataFetcher<>(this, entityQueryWiring.getEntityClass(), entityQueryWiring.getQueryName(), null));
             }
