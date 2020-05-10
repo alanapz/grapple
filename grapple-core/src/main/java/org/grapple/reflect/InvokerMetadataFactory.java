@@ -24,9 +24,9 @@ import org.grapple.schema.DefinitionImportException;
 import org.grapple.schema.QueryExecutionException;
 import org.grapple.utils.UnexpectedException;
 
-public final class EntityMetadataFactory {
+public final class InvokerMetadataFactory {
 
-    private EntityMetadataFactory() {
+    private InvokerMetadataFactory() {
 
     }
 

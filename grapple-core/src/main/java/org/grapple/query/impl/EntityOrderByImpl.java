@@ -32,6 +32,11 @@ final class EntityOrderByImpl<X> implements EntityOrderBy<X> {
         return fetchSet;
     }
 
+    @Override
+    public SortDirection getDirection() {
+        return direction;
+    }
+
     Order build(ExecutionContext executionContext, QueryBuilder queryBuilder) {
         final EntityContext<X> entityContext = executionContext.getEntityContext(fetchSet);
         final Expression<?> expression = resolveExpression(entityContext, queryBuilder);

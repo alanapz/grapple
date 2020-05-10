@@ -17,7 +17,6 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.grapple.invoker.GrappleParameter;
@@ -31,10 +30,10 @@ import org.grapple.query.QueryResultList;
 import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
 import org.grapple.reflect.EntityFilterMethodMetadata;
-import org.grapple.reflect.EntityMetadataFactory;
 import org.grapple.reflect.EntityQueryMetadata.EntityQueryMethodMetadata;
 import org.grapple.reflect.EntityQueryMetadata.EntityQueryMethodType;
 import org.grapple.reflect.EntityQueryMetadata.EntityQueryParameterMetadata;
+import org.grapple.reflect.InvokerMetadataFactory;
 import org.grapple.reflect.ReflectUtils;
 import org.grapple.schema.DefinitionImportException;
 import org.grapple.schema.EntityFilterItemBuilder;
@@ -42,7 +41,6 @@ import org.grapple.schema.EntityQueryResolver;
 import org.grapple.schema.EntityQueryType;
 import org.grapple.schema.EntitySchemaScanner;
 import org.grapple.schema.EntitySchemaScannerCallback;
-import org.grapple.utils.NoDuplicatesSet;
 import org.grapple.utils.UnreachableException;
 import org.grapple.utils.Utils;
 
@@ -80,9 +78,9 @@ final class EntitySchemaScannerImpl implements EntitySchemaScanner {
             }
         }
         for (Method method : definitionsClass.getDeclaredMethods()) {
-            final EntityFilterMethodMetadata<?, ?> filterMethodMetadata = EntityMetadataFactory.parseFilterMethod(method);
-            if (filterMethodMetadata != null) {
-                importFilter(filterMethodMetadata);
+            final EntityFilterMethodMetadata<?, ?> entityFilterMetadata = InvokerMetadataFactory.parseFilterMethod(method);
+            if (entityFilterMetadata != null) {
+                importFilter(entityFilterMetadata);
             }
         }
     }
@@ -154,33 +152,36 @@ final class EntitySchemaScannerImpl implements EntitySchemaScanner {
     }
 
     @Override
-    public void importQueries(Object instance) {
+    public void importOperations(Object instance) {
         requireNonNull(instance, "instance");
-        importQueries(instance, instance.getClass());
+        importOperations(instance, instance.getClass());
     }
 
     @Override
-    public void importQueries(Object instance, Class<?> instanceClass) {
+    public void importOperations(Object instance, Class<?> instanceClass) {
         requireNonNull(instance, "instance");
         requireNonNull(instanceClass, "instanceClass");
-        for (EntityQueryMethodMetadata<?> methodMetadata: processQueryClass(instanceClass)) {
-            importQueryResult(instance, methodMetadata);
+        for (Method method : instanceClass.getDeclaredMethods()) {
+            final EntityQueryMethodMetadata<?> entityQueryMetadata = processQueryMethod(method);
+            if (entityQueryMetadata != null) {
+                importQueryResult(instance, entityQueryMetadata);
+            }
         }
     }
 
-    private <X> void importQueryResult(Object instance, EntityQueryMethodMetadata<X> methodMetadata) {
+    private <X> void importQueryResult(Object instance, EntityQueryMethodMetadata<X> entityQueryMetadata) {
         requireNonNull(instance, "instance");
-        requireNonNull(methodMetadata, "methodMetadata");
-        final EntityDefinitionImpl<X> entityDefinition = findOrLoadEntity(methodMetadata.entityClass);
+        requireNonNull(entityQueryMetadata, "entityQueryMetadata");
+        final EntityDefinitionImpl<X> entityDefinition = findOrLoadEntity(entityQueryMetadata.entityClass);
         if (entityDefinition == null) {
             return;
         }
-        if (!scannerCallback.acceptQuery(entityDefinition, methodMetadata.method)) {
+        if (!scannerCallback.acceptQuery(entityDefinition, entityQueryMetadata.method)) {
             return;
         }
-        final EntityQueryResolver<X> entityQueryResolver = EntityQueryUtils.buildMethodEntityQueryResolver(methodMetadata, instance);
-        final GeneratedEntityQueryDefinitionImpl<X> entityQueryDefinition = entityDefinition.addGeneratedQuery(methodMetadata, entityQueryResolver);
-        scannerCallback.configureQuery(methodMetadata.method, entityQueryDefinition);
+        final EntityQueryResolver<X> entityQueryResolver = EntityQueryUtils.buildMethodEntityQueryResolver(entityQueryMetadata, instance);
+        final GeneratedEntityQueryDefinitionImpl<X> entityQueryDefinition = entityDefinition.addGeneratedQuery(entityQueryMetadata, entityQueryResolver);
+        scannerCallback.configureQuery(entityQueryMetadata.method, entityQueryDefinition);
     }
 
     private <X> EntityDefinitionImpl<X> findOrLoadEntity(Class<X> entityClass) {
@@ -205,18 +206,6 @@ final class EntitySchemaScannerImpl implements EntitySchemaScanner {
     @Override
     public <Z> Z invoke(Function<EntitySchemaScanner, Z> function) {
         return requireNonNull(function, "function").apply(this);
-    }
-
-    private static Set<EntityQueryMethodMetadata<?>> processQueryClass(Class<?> clazz) {
-        requireNonNull(clazz, "clazz");
-        final Set<EntityQueryMethodMetadata<?>> results = new NoDuplicatesSet<>();
-        for (Method method : clazz.getDeclaredMethods()) {
-            final EntityQueryMethodMetadata<?> result = processQueryMethod(method);
-            if (result != null) {
-                results.add(result);
-            }
-        }
-        return results;
     }
 
     private static EntityQueryMethodMetadata<?> processQueryMethod(Method method) {
@@ -364,7 +353,6 @@ final class EntitySchemaScannerImpl implements EntitySchemaScanner {
         }
 
         parameterMetadata.required = ((parameterType instanceof Class<?>) && ((Class<?>) parameterType).isPrimitive()) || (grappleParameter != null && grappleParameter.required());
-        parameterMetadata.typeAlias = (grappleParameter != null && isNotEmpty(grappleParameter.typeAlias()) ? grappleParameter.typeAlias() : null);
         return parameterMetadata;
     }
 }

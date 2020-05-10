@@ -360,8 +360,6 @@ final class EntityDefinitionImpl<X> implements EntityDefinition<X>, Validatable 
 
         });
 
-        // XXX System.out.println("BUOILT +" + entityClass);
-
         return new GeneratedEntityFilter<>(resolveFilterName(), null, filterItems, customFilters);
     }
 

@@ -3,7 +3,7 @@
     <groupId>org.grapple</groupId>
     <artifactId>grapple-core</artifactId>
     <packaging>jar</packaging>
-    <version>20200202.4</version>
+    <version>20200501.0</version>
     <name>Grapple Core</name>
     <dependencies>
         <dependency>

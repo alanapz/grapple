@@ -1,10 +1,12 @@
-package app;
+package sandbox.grapple.tests;
 
 import static org.grapple.query.EntityRootBuilder.entityRoot;
-import static org.grapple.utils.Utils.toSet;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import javax.persistence.EntityManager;
+import javax.persistence.Persistence;
 import graphql.GraphQL;
 import org.grapple.invoker.GrappleQuery;
 import org.grapple.query.Filters;
@@ -19,16 +21,21 @@ import org.grapple.schema.impl.EntitySchemaProvider;
 import sandbox.grapple.UserField;
 import sandbox.grapple.entity.User;
 
-public class CustomResolverSchemaTests {
+public abstract class TestSupport {
 
-    public static void main(String[] args) throws Exception {
-        Launch.runTest(CustomResolverSchemaTests::testCustomResolver);
+    protected final Set<Object> operationSources = new HashSet<>();
+
+    protected final EntityManager entityManager = Persistence.createEntityManagerFactory("grapple-sandbox").createEntityManager();
+
+    protected GraphQL buildGraphQL() {
+        return GraphQL.newGraphQL(buildDefaultSchema().getSchema()).build();
     }
 
-    private static void testCustomResolver(EntityManager entityManager) {
+    protected EntitySchemaResult buildDefaultSchema() {
         final EntitySchema entitySchema = EntitySchemaProvider.newSchema();
         entitySchema.buildEntitySchemaScanner(new EntitySchemaScannerCallback()).apply(entitySchemaScanner -> {
             entitySchemaScanner.importDefinitions(QueryDefinitions.class, "app", "sandbox");
+            operationSources.forEach(entitySchemaScanner::importOperations);
             entitySchemaScanner.importOperations(new Object() {
 
                 @GrappleQuery
@@ -51,12 +58,7 @@ public class CustomResolverSchemaTests {
         });
 
         System.out.println(entitySchema);
-        final EntitySchemaResult generatedEntitySchema = Launch.buildGraphQL(entitySchema);
-        final GraphQL graphQL = GraphQL.newGraphQL(generatedEntitySchema.getSchemaWithVisibility(toSet("xx", "yyy", "adminx"))).build();
-        Launch.runQuery(graphQL, "query{ listUsers { offset, count, total, results { id } } }");
-        Launch.runQuery(graphQL, "query{ getUserById(userId: 1) { id } }");
-        Launch.runQuery(graphQL, "query{ getUserById(userId: 123) { id } }");
-        Launch.runQuery(graphQL, "query{ getUserByIdOrNull(userId: 1) { id } }");
-        Launch.runQuery(graphQL, "query{ getUserByIdOrNull(userId: 123) { id } }");
+
+        return entitySchema.generate();
     }
 }

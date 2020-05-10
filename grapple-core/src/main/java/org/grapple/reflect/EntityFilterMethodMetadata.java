@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import graphql.schema.DataFetchingEnvironment;
 import org.grapple.query.EntityFilter;
 import org.grapple.query.FetchSet;
+import org.grapple.reflect.TypeLiteral;
 
 public interface EntityFilterMethodMetadata<X, T> {
 

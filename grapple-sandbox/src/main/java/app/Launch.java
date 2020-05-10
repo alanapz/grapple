@@ -4,8 +4,14 @@ import static graphql.ExecutionInput.newExecutionInput;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -92,10 +98,12 @@ public class Launch {
         final ExecutionInput executionInput = newExecutionInput().query(query).build();
         System.out.println(format("Query: %s", executionInput.getQuery()));
         final ExecutionResult executionResult = graphQL.execute(executionInput);
+        System.out.println(format("*** Request : %s", executionInput.getQuery()));
+        System.out.println(format("*** Response: %s", executionResult));
         if (!executionResult.getErrors().isEmpty()) {
             throw new RuntimeException(executionResult.getErrors().toString());
         }
-        System.out.println(format("Response: %s", (Object) executionResult.getData()));
+        System.out.println(format("Response: %s", (Map<?, ?>) executionResult.getData()));
     }
 
     private static EntityManager getEntityManager() {
@@ -105,9 +113,31 @@ public class Launch {
         return entityManagerFactory.createEntityManager();
     }
 
+    private static DateTimeFormatter w(DateTimeFormatter dateTimeFormatter)
+    {
+        return dateTimeFormatter.withZone(ZoneId.systemDefault());
+        //return dateTimeFormatter.withZone(ZoneId.of("UTC"));
+    }
+
     public static void main(String[] args) throws Exception {
 
-//
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
+        System.out.println(formatter.format(Instant.now()));
+        System.out.println(Instant.from(formatter.parse(formatter.format(Instant.now()))));
+        System.out.println(Instant.from(formatter.parse("2020-05-01T14:30:36Z")));
+
+        System.exit(0);
+
+
+        Instant i = Instant.now();
+        System.out.println(i);
+        ZonedDateTime localDateTime = ZonedDateTime.ofInstant(i, ZoneId.systemDefault());
+        System.out.println(localDateTime);
+        System.out.println(DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(localDateTime));
+        System.out.println(DateTimeFormatter.RFC_1123_DATE_TIME.format(localDateTime));
+
+        System.exit(0);
+
 //        System.getProperties().put("entityManager", entityManager);
 //        System.getProperties().put("usersRoot", entityRoot(User.class));
 

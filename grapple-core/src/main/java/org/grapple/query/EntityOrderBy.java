@@ -4,4 +4,6 @@ public interface EntityOrderBy<X> {
 
     FetchSet<X> getFetchSet();
 
+    SortDirection getDirection();
+
 }
