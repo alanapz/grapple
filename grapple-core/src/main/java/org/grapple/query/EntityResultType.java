@@ -42,11 +42,14 @@ public final class EntityResultType<T> {
 
     @Override
     public boolean equals(Object other) {
-        if (!(other instanceof EntityResultType<?>)) {
-            return false;
-        }
         if (other == this) {
             return true;
+        }
+        if (other == null) {
+            return false;
+        }
+        if (!getClass().equals(other.getClass())) {
+            return false;
         }
         return type.equals(((EntityResultType<?>) other).type) && (nullAllowed == ((EntityResultType<?>) other).nullAllowed);
     }
@@ -63,31 +66,31 @@ public final class EntityResultType<T> {
 
     public static <T> EntityResultType<T> nullAllowed(Class<T> clazz) {
         requireNonNull(clazz, "clazz");
-        return entityResultType(clazz, true);
+        return fieldResultType(clazz, true);
     }
 
     public static <T> EntityResultType<T> nullAllowed(TypeLiteral<T> type) {
         requireNonNull(type, "type");
-        return entityResultType(type, true);
+        return fieldResultType(type, true);
     }
 
     public static <T> EntityResultType<T> nonNull(Class<T> clazz) {
         requireNonNull(clazz, "clazz");
-        return entityResultType(clazz, false);
+        return fieldResultType(clazz, false);
     }
 
     public static <T> EntityResultType<T> nonNull(TypeLiteral<T> type) {
         requireNonNull(type, "type");
-        return entityResultType(type, false);
+        return fieldResultType(type, false);
     }
 
-    public static <T> EntityResultType<T> entityResultType(Class<T> clazz, boolean nullAllowed) {
+    public static <T> EntityResultType<T> fieldResultType(Class<T> clazz, boolean nullAllowed) {
         requireNonNull(clazz, "clazz");
-        return entityResultType(classLiteral(clazz), nullAllowed);
+        return fieldResultType(classLiteral(clazz), nullAllowed);
     }
 
     @SuppressWarnings("unchecked")
-    static <T> EntityResultType<T> entityResultType(TypeLiteral<T> type, boolean nullAllowed) {
+    static <T> EntityResultType<T> fieldResultType(TypeLiteral<T> type, boolean nullAllowed) {
         requireNonNull(type, "type");
         final EntityResultType<T> predefinedType = (EntityResultType<T>) instanceCache.get(new Tuple2<TypeLiteral<?>, Boolean>(type, nullAllowed));
         if (predefinedType != null) {
@@ -137,4 +140,3 @@ public final class EntityResultType<T> {
         }
     }
 }
-

@@ -9,7 +9,7 @@ public interface EntitySchema extends Chainable<EntitySchema> {
 
     void addSchemaListener(EntitySchemaListener listener);
 
-    void addEntityQueryExecutionListener(EntityQueryExecutionListener listener);
+    // void addEntityQueryExecutionListener(EntityQueryExecutionListener listener);
 
     <X> EntityDefinition<X> getEntity(Class<X> entityClass);
 

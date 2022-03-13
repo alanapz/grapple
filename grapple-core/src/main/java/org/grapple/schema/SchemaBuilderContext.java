@@ -1,3 +1,4 @@
+/*
 package org.grapple.schema;
 
 import java.lang.reflect.Type;
@@ -8,3 +9,4 @@ public interface SchemaBuilderContext {
     GraphQLType buildTypeFor(Type type);
 
 }
+*/

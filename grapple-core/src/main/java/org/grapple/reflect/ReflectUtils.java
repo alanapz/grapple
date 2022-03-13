@@ -1,7 +1,5 @@
 package org.grapple.reflect;
 
-import static graphql.schema.GraphQLNonNull.nonNull;
-import static graphql.schema.GraphQLTypeUtil.isNonNull;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.reflect.ClassLiteral.classLiteral;
@@ -10,22 +8,12 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.net.URL;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import graphql.schema.GraphQLType;
 import org.grapple.utils.NoDuplicatesMap;
 import org.grapple.utils.UnexpectedException;
-import org.reflections.Reflections;
-import org.reflections.ReflectionsException;
-import org.reflections.scanners.SubTypesScanner;
-import org.reflections.scanners.TypeAnnotationsScanner;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
 
 public final class ReflectUtils {
 
@@ -35,6 +23,7 @@ public final class ReflectUtils {
 
     }
 
+    /*
     public static GraphQLType wrapNonNullIfNecessary(GraphQLType unwrappedType) {
         requireNonNull(unwrappedType, "unwrappedType");
         return (isNonNull(unwrappedType) ? unwrappedType : nonNull(unwrappedType));
@@ -44,6 +33,7 @@ public final class ReflectUtils {
         requireNonNull(unwrappedType, "unwrappedType");
         return (wrapNonNullIfNecessary ? wrapNonNullIfNecessary(unwrappedType) : unwrappedType);
     }
+    */
 
     @SuppressWarnings("unchecked")
     public static <T> Class<T> wrapPrimitiveTypeIfNecessary(Class<T> clazz) {
@@ -135,27 +125,6 @@ public final class ReflectUtils {
             }
         }
         return Optional.empty();
-    }
-
-    public static Set<Class<?>> getAllTypesAnnotatedWith(Set<String> packageNames, Class<? extends Annotation> annotation, boolean includeInherited) {
-        requireNonNull(packageNames, "packageNames");
-        requireNonNull(annotation, "annotation");
-        if (packageNames.isEmpty()) {
-            return Collections.emptySet();
-        }
-        final Set<URL> urlsToScan = new HashSet<>();
-        packageNames.forEach(packageName -> urlsToScan.addAll(ClasspathHelper.forPackage(packageName)));
-        final ConfigurationBuilder configurationBuilder = ConfigurationBuilder.build();
-        configurationBuilder.setUrls(urlsToScan);
-        configurationBuilder.setScanners(new SubTypesScanner(), new TypeAnnotationsScanner());
-        configurationBuilder.useParallelExecutor();
-        try {
-            return new Reflections(configurationBuilder).getTypesAnnotatedWith(annotation, includeInherited);
-        }
-        catch (ReflectionsException e) {
-            // Library is buggy - sometimes if no results found, throws exception
-            return Collections.emptySet();
-        }
     }
 
     @SuppressWarnings("unchecked")

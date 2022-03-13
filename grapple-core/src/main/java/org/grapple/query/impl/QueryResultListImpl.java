@@ -9,11 +9,11 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.grapple.query.NonScalarQueryResultException;
 import org.grapple.query.QueryResultList;
 import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
 import org.grapple.query.TabularResultList;
-import org.grapple.schema.NonScalarQueryResultException;
 
 final class QueryResultListImpl<X> implements QueryResultList<X> {
 

@@ -1,3 +1,4 @@
+/*
 package org.grapple.schema.instrumentation;
 
 public interface DebugInstrumentationCallback<T> {
@@ -9,3 +10,4 @@ public interface DebugInstrumentationCallback<T> {
     void error(String name, Object params, Throwable throwable, T callbackToken);
 
 }
+*/

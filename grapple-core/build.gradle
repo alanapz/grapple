@@ -1,0 +1,51 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+repositories {
+    mavenLocal()
+    maven {
+        url = uri('https://repo.maven.apache.org/maven2/')
+    }
+}
+
+dependencies {
+    compileOnly 'javax.persistence:javax.persistence-api:2.2'
+    implementation 'org.jooq:jool:0.9.12'
+    implementation 'com.graphql-java:graphql-java:16.2'
+    implementation 'com.graphql-java:graphql-java-extended-scalars:16.0.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.10.2'
+}
+
+group = 'org.grapple'
+version = '20200501.0'
+
+java.sourceCompatibility = JavaVersion.VERSION_1_8
+
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+    options.compilerArgs << '-g'
+    options.compilerArgs << '-Xlint:all'
+    options.compilerArgs << '-Xlint:unchecked'
+    options.compilerArgs << '-Xlint:deprecation'
+    options.compilerArgs << '-Xmaxerrs'
+    options.compilerArgs << '10000'
+
+}
+
+sourceSets {
+    main {
+        java {
+        }
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from(components.java)
+        }
+    }
+}

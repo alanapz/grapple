@@ -2,7 +2,6 @@ package org.grapple.query;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static org.grapple.query.EntityResultType.entityResultType;
 import static org.grapple.utils.Utils.coalesce;
 import static org.grapple.utils.Utils.markAsUsed;
 import static org.grapple.utils.Utils.requireNonNullArgument;
