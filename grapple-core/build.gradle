@@ -1,3 +1,4 @@
+//file:noinspection GroovyAssignabilityCheck
 plugins {
     id 'java'
     id 'maven-publish'
@@ -12,6 +13,7 @@ repositories {
 
 dependencies {
     compileOnly 'javax.persistence:javax.persistence-api:2.2'
+    compileOnly 'org.jetbrains:annotations:20.1.0'
     implementation 'org.jooq:jool:0.9.12'
     implementation 'com.graphql-java:graphql-java:16.2'
     implementation 'com.graphql-java:graphql-java-extended-scalars:16.0.1'
@@ -21,7 +23,8 @@ dependencies {
 group = 'org.grapple'
 version = '20200501.0'
 
-java.sourceCompatibility = JavaVersion.VERSION_1_8
+java.sourceCompatibility = JavaVersion.VERSION_1_9
+java.targetCompatibility = JavaVersion.VERSION_1_9
 
 compileJava {
     options.encoding = 'UTF-8'
@@ -32,12 +35,17 @@ compileJava {
     options.compilerArgs << '-Xlint:deprecation'
     options.compilerArgs << '-Xmaxerrs'
     options.compilerArgs << '10000'
-
 }
 
 sourceSets {
     main {
         java {
+            exclude 'org/grapple/invoker/**'
+            exclude 'org/grapple/reflect/EntityQueryMetadata.java'
+            exclude 'org/grapple/reflect/InvokerMetadataFactory.java'
+            exclude 'org/grapple/reflect/MutationMethodMetadata.java'
+//            exclude 'org/grapple/scalars/**'
+            exclude 'org/grapple/schema/**'
         }
     }
 }

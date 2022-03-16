@@ -27,12 +27,6 @@ public final class Utils {
         // Nothing to do here..
     }
 
-    public static <T> T requireNonNullArgument(T obj, String message) {
-        if (obj == null) {
-            throw new IllegalArgumentException(message);
-        }
-        return obj;
-    }
 
     @SafeVarargs
     @SuppressWarnings("varargs")

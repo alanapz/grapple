@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import org.jetbrains.annotations.NotNull;
 
 public final class NoDuplicatesMap<K, V> implements Map<K, V> {
 
@@ -88,17 +89,17 @@ public final class NoDuplicatesMap<K, V> implements Map<K, V> {
     }
 
     @Override
-    public Set<K> keySet() {
+    public @NotNull Set<K> keySet() {
         return backingMap.keySet();
     }
 
     @Override
-    public Collection<V> values() {
+    public @NotNull Collection<V> values() {
         return backingMap.values();
     }
 
     @Override
-    public Set<Entry<K, V>> entrySet() {
+    public @NotNull Set<Entry<K, V>> entrySet() {
         return backingMap.entrySet();
     }
 }

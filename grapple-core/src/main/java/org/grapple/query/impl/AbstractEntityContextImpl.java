@@ -30,6 +30,7 @@ import org.grapple.query.QueryParameter;
 import org.grapple.utils.LazyValue;
 import org.grapple.utils.NoDuplicatesMap;
 import org.grapple.utils.UnexpectedException;
+import org.jetbrains.annotations.NotNull;
 
 abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
 
@@ -51,7 +52,7 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
 
     private final Map<EntityField<X, ?>, NonQuerySelection<?>> nonQuerySelections = new NoDuplicatesMap<>();
 
-    AbstractEntityContextImpl(RootFetchSetImpl<?> rootFetchSet, QueryWrapper queryWrapper, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity) {
+    AbstractEntityContextImpl(@NotNull RootFetchSetImpl<?> rootFetchSet, @NotNull QueryWrapper queryWrapper, @NotNull QueryBuilder queryBuilder, @NotNull Supplier<? extends From<?, X>> entity) {
         this.rootFetchSet = requireNonNull(rootFetchSet, "rootFetchSet");
         this.queryWrapper = requireNonNull(queryWrapper, "queryWrapper");
         this.queryBuilder = requireNonNull(queryBuilder, "queryBuilder");
@@ -200,7 +201,7 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    public <Z> Z invoke(Function<EntityContext<X>, Z> function) {
+    public <Z> Z invoke(@NotNull Function<EntityContext<X>, Z> function) {
         return requireNonNull(function, "function").apply(this);
     }
 

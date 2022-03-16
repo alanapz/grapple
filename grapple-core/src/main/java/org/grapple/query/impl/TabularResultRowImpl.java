@@ -15,6 +15,7 @@ import org.grapple.query.TabularResultRow;
 import org.grapple.utils.NoDuplicatesMap;
 import org.grapple.utils.NoDuplicatesSet;
 import org.grapple.utils.Utils;
+import org.jetbrains.annotations.NotNull;
 import org.jooq.lambda.tuple.Tuple2;
 
 final class TabularResultRowImpl implements TabularResultRow {
@@ -78,7 +79,7 @@ final class TabularResultRowImpl implements TabularResultRow {
     }
 
     @Override
-    public <Z> Z invoke(Function<TabularResultRow, Z> function) {
+    public <Z> Z invoke(@NotNull Function<TabularResultRow, Z> function) {
         return requireNonNull(function, "function").apply(this);
     }
 }

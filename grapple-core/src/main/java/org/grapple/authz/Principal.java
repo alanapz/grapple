@@ -1,4 +1,4 @@
-package org.grapple.core;
+package org.grapple.authz;
 
 public interface Principal {
 

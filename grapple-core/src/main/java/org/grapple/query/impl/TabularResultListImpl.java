@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.grapple.query.TabularResultList;
 import org.grapple.query.TabularResultRow;
+import org.jetbrains.annotations.NotNull;
 
 final class TabularResultListImpl implements TabularResultList {
 
@@ -51,7 +52,7 @@ final class TabularResultListImpl implements TabularResultList {
     }
 
     @Override
-    public Iterator<TabularResultRow> iterator() {
+    public @NotNull Iterator<TabularResultRow> iterator() {
         return seq(results).cast(TabularResultRow.class).iterator();
     }
 }

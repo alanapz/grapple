@@ -432,7 +432,6 @@ final class SchemaBuilderContext implements org.grapple.schema.SchemaBuilderCont
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     GraphQLOutputType getUnwrappedTypeFor(Type type) {
         requireNonNull(type, "type");
 

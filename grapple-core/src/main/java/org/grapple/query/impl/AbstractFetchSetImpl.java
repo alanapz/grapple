@@ -18,6 +18,7 @@ import org.grapple.query.EntitySortKey;
 import org.grapple.query.FetchSet;
 import org.grapple.query.QueryField;
 import org.grapple.query.SortDirection;
+import org.jetbrains.annotations.NotNull;
 
 abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
 
@@ -107,7 +108,7 @@ abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
     }
 
     @Override
-    public <Z> Z invoke(Function<FetchSet<X>, Z> function) {
+    public <Z> Z invoke(@NotNull Function<FetchSet<X>, Z> function) {
         return requireNonNull(function, "function").apply(this);
     }
 

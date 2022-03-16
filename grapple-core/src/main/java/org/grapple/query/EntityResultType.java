@@ -1,7 +1,6 @@
 package org.grapple.query;
 
 import static java.lang.String.format;
-import static java.util.Objects.requireNonNull;
 import static org.grapple.reflect.ClassLiteral.classLiteral;
 
 import java.math.BigDecimal;
@@ -13,6 +12,7 @@ import java.util.Map;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.utils.NoDuplicatesMap;
 import org.grapple.utils.UnexpectedException;
+import org.jetbrains.annotations.NotNull;
 import org.jooq.lambda.tuple.Tuple2;
 
 public final class EntityResultType<T> {
@@ -23,10 +23,9 @@ public final class EntityResultType<T> {
 
     private static final Map<Tuple2<TypeLiteral<?>, Boolean>, EntityResultType<?>> instanceCache = new NoDuplicatesMap<>();
 
-    private EntityResultType(TypeLiteral<T> type, boolean nullAllowed) {
-        requireNonNull(type, "type");
+    private EntityResultType(@NotNull TypeLiteral<T> type, boolean nullAllowed) {
         if (type.isPrimitiveType() && nullAllowed)  {
-            throw new UnexpectedException(String.format("Cannot have null primitive: %s", type));
+            throw new UnexpectedException(format("Cannot have null primitive: %s", type));
         }
         this.type = type;
         this.nullAllowed = nullAllowed;
@@ -42,16 +41,11 @@ public final class EntityResultType<T> {
 
     @Override
     public boolean equals(Object other) {
-        if (other == this) {
-            return true;
-        }
-        if (other == null) {
-            return false;
-        }
-        if (!getClass().equals(other.getClass())) {
-            return false;
-        }
-        return type.equals(((EntityResultType<?>) other).type) && (nullAllowed == ((EntityResultType<?>) other).nullAllowed);
+        return (other instanceof EntityResultType<?> && equals((EntityResultType<?>) other));
+    }
+
+    public boolean equals(EntityResultType<?> other) {
+        return (other != null) && type.equals(other.type) && (nullAllowed == other.nullAllowed);
     }
 
     @Override
@@ -64,39 +58,29 @@ public final class EntityResultType<T> {
         return format("%s%s", type, (nullAllowed ? "" : "!"));
     }
 
-    public static <T> EntityResultType<T> nullAllowed(Class<T> clazz) {
-        requireNonNull(clazz, "clazz");
-        return fieldResultType(clazz, true);
+    public static <T> EntityResultType<T> nullAllowed(@NotNull Class<T> clazz) {
+        return entityResultType(clazz, true);
     }
 
-    public static <T> EntityResultType<T> nullAllowed(TypeLiteral<T> type) {
-        requireNonNull(type, "type");
-        return fieldResultType(type, true);
+    public static <T> EntityResultType<T> nullAllowed(@NotNull TypeLiteral<T> type) {
+        return entityResultType(type, true);
     }
 
-    public static <T> EntityResultType<T> nonNull(Class<T> clazz) {
-        requireNonNull(clazz, "clazz");
-        return fieldResultType(clazz, false);
+    public static <T> EntityResultType<T> nonNull(@NotNull Class<T> clazz) {
+        return entityResultType(clazz, false);
     }
 
-    public static <T> EntityResultType<T> nonNull(TypeLiteral<T> type) {
-        requireNonNull(type, "type");
-        return fieldResultType(type, false);
+    public static <T> EntityResultType<T> nonNull(@NotNull TypeLiteral<T> type) {
+        return entityResultType(type, false);
     }
 
-    public static <T> EntityResultType<T> fieldResultType(Class<T> clazz, boolean nullAllowed) {
-        requireNonNull(clazz, "clazz");
-        return fieldResultType(classLiteral(clazz), nullAllowed);
+    public static <T> EntityResultType<T> entityResultType(@NotNull Class<T> clazz, boolean nullAllowed) {
+        return entityResultType(classLiteral(clazz), nullAllowed);
     }
 
     @SuppressWarnings("unchecked")
-    static <T> EntityResultType<T> fieldResultType(TypeLiteral<T> type, boolean nullAllowed) {
-        requireNonNull(type, "type");
-        final EntityResultType<T> predefinedType = (EntityResultType<T>) instanceCache.get(new Tuple2<TypeLiteral<?>, Boolean>(type, nullAllowed));
-        if (predefinedType != null) {
-            return predefinedType;
-        }
-        return new EntityResultType<>(type, nullAllowed);
+    static <T> EntityResultType<T> entityResultType(@NotNull TypeLiteral<T> type, boolean nullAllowed) {
+        return (EntityResultType<T>) instanceCache.computeIfAbsent(new Tuple2<>(type, nullAllowed), unused -> new EntityResultType<>(type, nullAllowed));
     }
 
     static {
@@ -133,7 +117,7 @@ public final class EntityResultType<T> {
         addPredefinedType(classLiteral(LocalTime.class));
     }
 
-    static void addPredefinedType(TypeLiteral<?> type) {
+    static void addPredefinedType(@NotNull TypeLiteral<?> type) {
         instanceCache.put(new Tuple2<>(type, false), new EntityResultType<>(type, false));
         if (!type.isPrimitiveType()) {
             instanceCache.put(new Tuple2<>(type, true), new EntityResultType<>(type, true));

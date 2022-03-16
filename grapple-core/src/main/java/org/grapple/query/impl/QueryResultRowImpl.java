@@ -10,6 +10,7 @@ import org.grapple.query.EntityJoin;
 import org.grapple.query.FetchSet;
 import org.grapple.query.QueryResultRow;
 import org.grapple.utils.Utils;
+import org.jetbrains.annotations.NotNull;
 
 final class QueryResultRowImpl<X> implements QueryResultRow<X> {
 
@@ -81,7 +82,7 @@ final class QueryResultRowImpl<X> implements QueryResultRow<X> {
     }
 
     @Override
-    public <Z> Z invoke(Function<QueryResultRow<X>, Z> function) {
+    public <Z> Z invoke(@NotNull Function<QueryResultRow<X>, Z> function) {
         return requireNonNull(function, "function").apply(this);
     }
 }

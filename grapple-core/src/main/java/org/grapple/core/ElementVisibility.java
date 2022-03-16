@@ -1,10 +1,10 @@
 package org.grapple.core;
 
-import java.util.Set;
+import org.grapple.authz.Principal;
 
 @FunctionalInterface
 public interface ElementVisibility {
 
-    boolean isVisible(Set<String> rolesHeld);
+    boolean isVisible(Principal principal);
 
 }

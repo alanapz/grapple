@@ -3,6 +3,7 @@ package org.grapple.reflect;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import org.jetbrains.annotations.NotNull;
 
 public abstract class GenericLiteral<T> implements TypeLiteral<T>, Comparable<GenericLiteral<T>> {
 
@@ -63,7 +64,7 @@ public abstract class GenericLiteral<T> implements TypeLiteral<T>, Comparable<Ge
     }
 
     @Override
-    public final int compareTo(GenericLiteral<T> unused) {
+    public final int compareTo(@NotNull GenericLiteral<T> unused) {
         return 0;
     }
 }
