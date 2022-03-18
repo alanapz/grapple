@@ -4,12 +4,11 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+
 import graphql.ExecutionResult;
-import graphql.execution.instrumentation.DeferredFieldInstrumentationContext;
 import graphql.execution.instrumentation.ExecutionStrategyInstrumentationContext;
 import graphql.execution.instrumentation.Instrumentation;
 import graphql.execution.instrumentation.InstrumentationContext;
-import graphql.execution.instrumentation.parameters.InstrumentationDeferredFieldParameters;
 import graphql.execution.instrumentation.parameters.InstrumentationExecuteOperationParameters;
 import graphql.execution.instrumentation.parameters.InstrumentationExecutionParameters;
 import graphql.execution.instrumentation.parameters.InstrumentationExecutionStrategyParameters;
@@ -71,22 +70,6 @@ public final class DebugInstrumentation<T> implements Instrumentation {
     @Override
     public ExecutionStrategyInstrumentationContext beginExecutionStrategy(InstrumentationExecutionStrategyParameters instrumentationExecutionStrategyParameters) {
         return new ExecutionStrategyInstrumentationContext(){
-
-            @Override
-            public void onDispatched(CompletableFuture<ExecutionResult> completableFuture) {
-                // Nothing to do here ...
-            }
-
-            @Override
-            public void onCompleted(ExecutionResult executionResult, Throwable throwable) {
-                // Nothing to do here ...
-            }
-        };
-    }
-
-    @Override
-    public DeferredFieldInstrumentationContext beginDeferredField(InstrumentationDeferredFieldParameters instrumentationDeferredFieldParameters) {
-        return new DeferredFieldInstrumentationContext(){
 
             @Override
             public void onDispatched(CompletableFuture<ExecutionResult> completableFuture) {

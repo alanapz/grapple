@@ -41,5 +41,4 @@ public interface RootFetchSet<X> extends FetchSet<X> {
 
     @Override
     RootFetchSet<X> apply(Consumer<FetchSet<X>> consumer); // Shame we can't type it as Consumer<RootFetchSet>
-
 }

@@ -1,9 +1,9 @@
 package org.grapple.query;
 
-import static java.util.Objects.requireNonNull;
-
 import java.lang.reflect.AnnotatedElement;
 import javax.persistence.metamodel.SingularAttribute;
+
+import org.jetbrains.annotations.NotNull;
 
 final class QueryUtils {
 
@@ -11,8 +11,7 @@ final class QueryUtils {
 
     }
 
-    static String getDefaultDescription(SingularAttribute<?, ?> attribute) {
-        requireNonNull(attribute, "attribute");
+    static String getDefaultDescription(@NotNull SingularAttribute<?, ?> attribute) {
         if (!(attribute.getJavaMember() instanceof AnnotatedElement)) {
             return null;
         }
@@ -20,8 +19,7 @@ final class QueryUtils {
         return null;
     }
 
-    static String getDefaultDeprecationReason(SingularAttribute<?, ?> attribute) {
-        requireNonNull(attribute, "attribute");
+    static String getDefaultDeprecationReason(@NotNull SingularAttribute<?, ?> attribute) {
         if (!(attribute.getJavaMember() instanceof AnnotatedElement)) {
             return null;
         }

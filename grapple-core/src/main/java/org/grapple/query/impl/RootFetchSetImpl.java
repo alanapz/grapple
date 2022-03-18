@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import javax.persistence.EntityManager;
+
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityFilter;
 import org.grapple.query.EntityJoin;
@@ -86,6 +87,11 @@ final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootF
     }
 
     @Override
+    public RootFetchSet<X> apply(Consumer<FetchSet<X>> consumer) {
+        return (RootFetchSet<X>) super.apply(consumer);
+    }
+
+    @Override
     public int getFirstResult() {
         return firstResult;
     }
@@ -133,11 +139,6 @@ final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootF
     @Override
     public EntityResultList<X> entityQuery(EntityManager entityManager, EntityRoot<X> entityRoot) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public RootFetchSet<X> apply(Consumer<FetchSet<X>> consumer) {
-        return (RootFetchSet<X>) super.apply(consumer);
     }
 
     @Override

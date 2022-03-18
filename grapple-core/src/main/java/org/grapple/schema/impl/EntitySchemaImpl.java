@@ -2,7 +2,6 @@ package org.grapple.schema.impl;
 
 import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.requireNonNull;
-import static org.jooq.lambda.Seq.seq;
 
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
@@ -15,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Function;
+
 import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLOutputType;
@@ -35,7 +34,7 @@ import org.grapple.schema.EnumTypeBuilder;
 import org.grapple.schema.UnmanagedQueryDefinition;
 import org.grapple.schema.UnmanagedTypeDefinition;
 import org.grapple.utils.NoDuplicatesMap;
-import org.grapple.utils.Utils;
+import org.jetbrains.annotations.NotNull;
 
 final class EntitySchemaImpl implements EntitySchema {
 
@@ -65,7 +64,6 @@ final class EntitySchemaImpl implements EntitySchema {
 
     private static final SchemaPrinter defaultSchemaPrinter = new SchemaPrinter(SchemaPrinter.Options.defaultOptions()
             .includeScalarTypes(true)
-            .includeExtendedScalarTypes(true)
             .includeIntrospectionTypes(false)
             .includeDirectives(false)
             .includeSchemaDefinition(true));
@@ -75,8 +73,7 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     @Override
-    public void addSchemaListener(EntitySchemaListener schemaListener) {
-        requireNonNull(schemaListener, "schemaListener");
+    public void addSchemaListener(@NotNull EntitySchemaListener schemaListener) {
         schemaListeners.add(schemaListener);
     }
 
@@ -85,8 +82,7 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     @Override
-    public void addEntityQueryExecutionListener(EntityQueryExecutionListener listener) {
-        requireNonNull(listener, "listener");
+    public void addEntityQueryExecutionListener(@NotNull EntityQueryExecutionListener listener) {
         entityQueryExecutionListeners.addListener(listener);
     }
 
@@ -167,8 +163,7 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     @Override
-    public EntitySchemaScannerImpl buildEntitySchemaScanner(EntitySchemaScannerCallback scannerCallback) {
-        requireNonNull(scannerCallback, "scannerCallback");
+    public EntitySchemaScannerImpl buildEntitySchemaScanner(@NotNull EntitySchemaScannerCallback scannerCallback) {
         return new EntitySchemaScannerImpl(this, scannerCallback);
     }
 
@@ -176,7 +171,7 @@ final class EntitySchemaImpl implements EntitySchema {
         if (inputType == null) {
             return null; /// XXX: TODO: FIXME
         }
-        if (seq(schemaListeners).anyMatch(schemaListener -> !schemaListener.acceptFieldFilter(fieldType))) {
+        if (schemaListeners.stream().anyMatch(sl -> !sl.acceptFieldFilter(fieldType))) {
             return null;
         }
         final FieldFilterDefinitionImpl<T> fieldFilter = SimpleFieldFilterFactory.constructDefaultFilter(this, fieldType, inputType);
@@ -217,8 +212,7 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     @SuppressWarnings("unchecked")
-    <X> EntityDefinitionImpl<X> getEntityFor(EntityResultType<X> resultType) {
-        requireNonNull(resultType, "resultType");
+    <X> EntityDefinitionImpl<X> getEntityFor(@NotNull EntityResultType<X> resultType) {
         final Type type = resultType.getType().getType();
         if (!(type instanceof Class<?>)) { // Only concrete classes can be entities
             return null;
@@ -226,8 +220,7 @@ final class EntitySchemaImpl implements EntitySchema {
         return (EntityDefinitionImpl<X>) entities.get(type);
     }
 
-    GraphQLOutputType getResultTypeFor(SchemaBuilderContext ctx, EntityResultType<?> resultType) {
-        requireNonNull(resultType, "resultType");
+    GraphQLOutputType getResultTypeFor(SchemaBuilderContext ctx, @NotNull EntityResultType<?> resultType) {
         final GraphQLOutputType unwrappedType = getUnwrappedTypeFor(ctx, resultType.getType().getType());
         if (unwrappedType == null) {
             return null;
@@ -265,18 +258,7 @@ final class EntitySchemaImpl implements EntitySchema {
     }
 
     @Override
-    public EntitySchema apply(Consumer<EntitySchema> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntitySchema, Z> function) {
-        return requireNonNull(function, "function").apply(this);
-    }
-
-    @Override
     public String toString() {
         return defaultSchemaPrinter.print(generate().getSchema());
     }
-
 }

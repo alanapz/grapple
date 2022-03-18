@@ -2,14 +2,11 @@ package org.grapple.schema.impl;
 
 import static java.util.Objects.requireNonNull;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
 import graphql.schema.DataFetcher;
 import graphql.schema.GraphQLFieldDefinition;
 import org.grapple.core.ElementVisibility;
 import org.grapple.schema.UnmanagedQueryBuilder;
 import org.grapple.schema.UnmanagedQueryDefinition;
-import org.grapple.utils.Utils;
 
 public class UnmanagedQueryDefinitionImpl implements UnmanagedQueryDefinition {
 
@@ -113,15 +110,5 @@ public class UnmanagedQueryDefinitionImpl implements UnmanagedQueryDefinition {
         }
         ctx.addRootQueryField(graphQLFieldDefinition);
         ctx.addUnmanagedDataFetcher(ctx.getRootQueryTypeName(), graphQLFieldDefinition.getName(), dataFetcher);
-    }
-
-    @Override
-    public UnmanagedQueryDefinition apply(Consumer<UnmanagedQueryDefinition> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<UnmanagedQueryDefinition, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 }

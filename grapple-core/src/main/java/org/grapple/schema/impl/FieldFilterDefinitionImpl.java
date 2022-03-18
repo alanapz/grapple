@@ -5,13 +5,12 @@ import static java.util.Objects.requireNonNull;
 import static org.grapple.utils.Utils.readOnlyCopy;
 
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
+
 import org.grapple.core.ElementVisibility;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.FieldFilterDefinition;
 import org.grapple.utils.NoDuplicatesMap;
-import org.grapple.utils.Utils;
+import org.jetbrains.annotations.NotNull;
 
 final class FieldFilterDefinitionImpl<T> implements FieldFilterDefinition<T> {
 
@@ -85,8 +84,7 @@ final class FieldFilterDefinitionImpl<T> implements FieldFilterDefinition<T> {
     }
 
     @Override
-    public FieldFilterDefinition<T> addItem(SimpleFieldFilterItem<T> item) {
-        requireNonNull(item, "item");
+    public FieldFilterDefinition<T> addItem(@NotNull SimpleFieldFilterItem<T> item) {
         items.put(item.name, item);
         return this;
     }
@@ -94,15 +92,5 @@ final class FieldFilterDefinitionImpl<T> implements FieldFilterDefinition<T> {
     @Override
     public String toString() {
         return format("%s[%s]", entityName, fieldType);
-    }
-
-    @Override
-    public FieldFilterDefinition<T> apply(Consumer<FieldFilterDefinition<T>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<FieldFilterDefinition<T>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 }

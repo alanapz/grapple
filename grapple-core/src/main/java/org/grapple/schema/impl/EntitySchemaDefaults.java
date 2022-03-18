@@ -1,7 +1,7 @@
 package org.grapple.schema.impl;
 
-import static graphql.Scalars.GraphQLLong;
 import static graphql.Scalars.GraphQLString;
+import static graphql.scalars.ExtendedScalars.GraphQLLong;
 import static graphql.schema.GraphQLArgument.newArgument;
 import static graphql.schema.GraphQLEnumType.newEnum;
 import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
@@ -12,11 +12,13 @@ import static java.util.Objects.requireNonNull;
 import static org.grapple.reflect.ClassLiteral.classLiteral;
 
 import java.time.Instant;
+
 import graphql.schema.GraphQLEnumType;
 import org.grapple.reflect.ClassLiteral;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntityDefaultNameGenerator;
 import org.grapple.schema.EntityDefinition;
+import org.jetbrains.annotations.NotNull;
 
 final class EntitySchemaDefaults {
 
@@ -28,26 +30,22 @@ final class EntitySchemaDefaults {
         return new EntityDefaultNameGenerator() {
 
             @Override
-            public String generateFieldFilterEntityName(TypeLiteral<?> fieldType) {
-                requireNonNull(fieldType, "fieldType");
+            public String generateFieldFilterEntityName(@NotNull TypeLiteral<?> fieldType) {
                 return format("%sFilter", ((ClassLiteral<?>) fieldType).getType().getSimpleName());
             }
 
             @Override
-            public String generateContainerEntityName(EntityDefinition<?> entity) {
-                requireNonNull(entity, "entity");
+            public String generateContainerEntityName(@NotNull EntityDefinition<?> entity) {
                 return format("%sResults", entity.getName());
             }
 
             @Override
-            public String generateFilterEntityName(EntityDefinition<?> entity) {
-                requireNonNull(entity, "entity");
+            public String generateFilterEntityName(@NotNull EntityDefinition<?> entity) {
                 return format("%sFilter", entity.getName());
             }
 
             @Override
-            public String generateOrderByEntityName(EntityDefinition<?> entity) {
-                requireNonNull(entity, "entity");
+            public String generateOrderByEntityName(@NotNull EntityDefinition<?> entity) {
                 return format("%sOrderBy", entity.getName());
             }
         };

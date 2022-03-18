@@ -5,14 +5,11 @@ import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.entitySelectionJoinWiring;
 import static org.grapple.schema.impl.SchemaUtils.wrapNonNullIfNecessary;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
 import graphql.schema.GraphQLFieldDefinition;
 import org.grapple.core.ElementVisibility;
 import org.grapple.query.EntityJoin;
 import org.grapple.query.EntityMetadataKeys;
 import org.grapple.schema.EntityJoinDefinition;
-import org.grapple.utils.Utils;
 
 final class EntityJoinDefinitionImpl<X, Y> implements EntityJoinDefinition<X, Y> {
 
@@ -114,15 +111,4 @@ final class EntityJoinDefinitionImpl<X, Y> implements EntityJoinDefinition<X, Y>
                 .deprecate(deprecationReason)
                 .build();
     }
-
-    @Override
-    public EntityJoinDefinition<X, Y> apply(Consumer<EntityJoinDefinition<X, Y>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntityJoinDefinition<X, Y>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
-    }
 }
-

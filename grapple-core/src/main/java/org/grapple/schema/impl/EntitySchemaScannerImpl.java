@@ -17,8 +17,7 @@ import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Consumer;
-import java.util.function.Function;
+
 import org.grapple.invoker.GrappleParameter;
 import org.grapple.invoker.GrappleQuery;
 import org.grapple.metadata.DeprecationReason;
@@ -42,7 +41,6 @@ import org.grapple.schema.EntityQueryType;
 import org.grapple.schema.EntitySchemaScanner;
 import org.grapple.schema.EntitySchemaScannerCallback;
 import org.grapple.utils.UnreachableException;
-import org.grapple.utils.Utils;
 
 final class EntitySchemaScannerImpl implements EntitySchemaScanner {
 
@@ -196,16 +194,6 @@ final class EntitySchemaScannerImpl implements EntitySchemaScanner {
         final EntityDefinitionImpl<X> entityDefinition = schema.addEntity(entityClass);
         scannerCallback.configureEntity(entityClass, entityDefinition);
         return entityDefinition;
-    }
-
-    @Override
-    public EntitySchemaScanner apply(Consumer<EntitySchemaScanner> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntitySchemaScanner, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 
     private static EntityQueryMethodMetadata<?> processQueryMethod(Method method) {
