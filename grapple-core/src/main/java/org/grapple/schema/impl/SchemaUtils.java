@@ -14,10 +14,12 @@ import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLNonNull;
 import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLType;
+
 import org.grapple.query.EntityResultType;
 import org.grapple.query.RootFetchSet;
-import org.grapple.query.impl.QueryProvider;
 import org.grapple.schema.GraphQLQueryParameters;
+
+import org.jetbrains.annotations.NotNull;
 
 public final class SchemaUtils {
 
@@ -63,17 +65,13 @@ public final class SchemaUtils {
         return (node instanceof Field) && !((Field) node).getName().startsWith("__");
     }
 
-    static <X> RootFetchSet<X> buildFetchSet(DataFetchingEnvironment environment, String queryName, Class<X> entityClass) {
+    static <X> RootFetchSet<X> buildFetchSet(@NotNull SchemaBuilderContext ctx, @NotNull DataFetchingEnvironment environment, @NotNull String queryName, @NotNull Class<X> entityClass) {
         requireNonNull(environment, "environment");
         requireNonNull(queryName, "queryName");
         requireNonNull(entityClass, "entityClass");
-        return QueryProvider.newQuery(entityClass)
+        return ctx.getSchema().getQueryProvider().newQuery(entityClass)
                 .setQueryParameter(GraphQLQueryParameters.QueryName, queryName)
                 .setQueryParameter(GraphQLQueryParameters.Environment, environment)
                 .setQueryParameter(GraphQLQueryParameters.QuerySource, environment.getSource());
     }
-
-
-
-
 }

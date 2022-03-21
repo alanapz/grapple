@@ -21,12 +21,19 @@ import graphql.GraphQLError;
 import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.idl.SchemaPrinter;
+import sandbox.grapple.CompanyField;
+import sandbox.grapple.UserField;
+import sandbox.grapple.UserPrivateMessageField;
+import sandbox.grapple.entity.Company;
+import sandbox.grapple.entity.User;
+import sandbox.grapple.entity.UserPrivateMessage;
+
 import org.grapple.query.EntityFilter;
 import org.grapple.query.Filters;
 import org.grapple.query.QueryResultList;
 import org.grapple.query.RootFetchSet;
 import org.grapple.query.SortDirection;
-import org.grapple.query.impl.QueryProvider;
+import org.grapple.query.impl.QueryProviderFactory;
 import org.grapple.reflect.GenericLiteral;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntitySchema;
@@ -36,12 +43,6 @@ import org.grapple.schema.EntitySchemaScannerCallback;
 import org.grapple.schema.FieldFilterDefinition;
 import org.grapple.schema.impl.EntitySchemaProvider;
 import org.grapple.schema.instrumentation.DebugInstrumentationCallback;
-import sandbox.grapple.CompanyField;
-import sandbox.grapple.UserField;
-import sandbox.grapple.UserPrivateMessageField;
-import sandbox.grapple.entity.Company;
-import sandbox.grapple.entity.User;
-import sandbox.grapple.entity.UserPrivateMessage;
 
 public class Launch {
 
@@ -296,7 +297,7 @@ public class Launch {
     }
 
     private static void selectAllMessagesForX(EntityManager entityManager) {
-        final RootFetchSet<UserPrivateMessage> fetchSet = QueryProvider.newQuery(UserPrivateMessage.class);
+        final RootFetchSet<UserPrivateMessage> fetchSet = QueryProviderFactory.buildQueryProvider(c -> c.setEntityManager(() -> entityManager)).newQuery(UserPrivateMessage.class);
         fetchSet.select(UserPrivateMessageField.ID);
         fetchSet.select(UserPrivateMessageField.MESSAGE);
         fetchSet.select(UserPrivateMessageField.TIMESTAMP);

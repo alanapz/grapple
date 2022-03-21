@@ -2,7 +2,7 @@ package org.grapple.query;
 
 import java.util.List;
 import java.util.function.Consumer;
-import javax.persistence.EntityManager;
+
 import org.jetbrains.annotations.NotNull;
 
 public interface RootFetchSet<X> extends FetchSet<X> {
@@ -19,11 +19,11 @@ public interface RootFetchSet<X> extends FetchSet<X> {
 
     List<EntityOrderBy<?>> getOrderBy();
 
-    <T> RootFetchSet<X> setQueryParameter(QueryParameter<T> parameter, T value);
+    <T> RootFetchSet<X> setQueryParameter(@NotNull QueryParameter<T> parameter, T value);
 
-    QueryResultList<X> execute(EntityManager entityManager, EntityRoot<X> entityRoot);
+    QueryResultList<X> execute(@NotNull EntityRoot<X> entityRoot);
 
-    EntityResultList<X> entityQuery(EntityManager entityManager, EntityRoot<X> entityRoot);
+    EntityResultList<X> entityQuery(@NotNull EntityRoot<X> entityRoot);
 
     @Override
     RootFetchSet<X> select(@NotNull EntityField<X, ?> selection);

@@ -8,6 +8,8 @@ import org.grapple.query.EntityJoin;
 import org.grapple.query.FetchSet;
 import org.grapple.query.QueryResultRow;
 
+import org.jetbrains.annotations.NotNull;
+
 final class QueryResultRowImpl<X> implements QueryResultRow<X> {
 
     private final FetchSet<X> fetchSet;

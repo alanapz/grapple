@@ -16,6 +16,7 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
+
 import org.grapple.query.EntityContext;
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityFilter;
@@ -25,6 +26,8 @@ import org.grapple.query.FetchSet;
 import org.grapple.query.NullNotAllowedException;
 import org.grapple.query.QueryBuilder;
 import org.grapple.utils.LazyValue;
+
+import org.jetbrains.annotations.NotNull;
 
 final class ExecutionContext {
 
@@ -36,9 +39,9 @@ final class ExecutionContext {
 
     private final List<QueryRowCallback> fieldCallbacks = new ArrayList<>();
 
-    ExecutionContext(EntityManager entityManager) {
-        this.entityManager = requireNonNull(entityManager, "entityManager");
-        this.queryBuilder = new QueryBuilderImpl(entityManager.getCriteriaBuilder());
+    ExecutionContext(@NotNull QueryProviderImpl queryProvider) {
+        this.entityManager = queryProvider.getEntityManager();
+        this.queryBuilder = queryProvider.getQueryBuilder(new QueryBuilderImpl(entityManager.getCriteriaBuilder()));
     }
 
     @SuppressWarnings("unchecked")

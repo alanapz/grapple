@@ -21,7 +21,9 @@ import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.idl.SchemaPrinter;
+
 import org.grapple.query.EntityResultType;
+import org.grapple.query.QueryProvider;
 import org.grapple.reflect.ReflectUtils;
 import org.grapple.reflect.TypeConverter;
 import org.grapple.reflect.TypeLiteral;
@@ -34,9 +36,12 @@ import org.grapple.schema.EnumTypeBuilder;
 import org.grapple.schema.UnmanagedQueryDefinition;
 import org.grapple.schema.UnmanagedTypeDefinition;
 import org.grapple.utils.NoDuplicatesMap;
+
 import org.jetbrains.annotations.NotNull;
 
 final class EntitySchemaImpl implements EntitySchema {
+
+    private final QueryProvider queryProvider;
 
     private final List<EntitySchemaListener> schemaListeners = new ArrayList<>();
 
@@ -68,7 +73,8 @@ final class EntitySchemaImpl implements EntitySchema {
             .includeDirectives(false)
             .includeSchemaDefinition(true));
 
-    EntitySchemaImpl() {
+    EntitySchemaImpl(@NotNull QueryProvider queryProvider) {
+        this.queryProvider = queryProvider;
         EntitySchemaDefaults.addDefaultTypes(this);
     }
 
@@ -79,6 +85,10 @@ final class EntitySchemaImpl implements EntitySchema {
 
     List<EntitySchemaListener> getSchemaListeners() {
         return unmodifiableList(schemaListeners);
+    }
+
+    QueryProvider getQueryProvider() {
+        return queryProvider;
     }
 
     @Override

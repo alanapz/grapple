@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import javax.persistence.EntityManager;
 
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityFilter;
@@ -24,9 +23,12 @@ import org.grapple.query.QueryParameter;
 import org.grapple.query.QueryResultList;
 import org.grapple.query.RootFetchSet;
 import org.grapple.query.SortDirection;
+
 import org.jetbrains.annotations.NotNull;
 
 final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootFetchSet<X> {
+
+    private final QueryProviderImpl queryProvider;
 
     private final Class<X> entityClass;
 
@@ -38,8 +40,9 @@ final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootF
 
     private final Map<QueryParameter<?>, Object> queryParameters = new HashMap<>();
 
-    RootFetchSetImpl(Class<X> entityClass) {
-        this.entityClass = requireNonNull(entityClass, "entityClass");
+    RootFetchSetImpl(@NotNull QueryProviderImpl queryProvider, @NotNull Class<X> entityClass) {
+        this.queryProvider = queryProvider;
+        this.entityClass = entityClass;
     }
 
     @Override
@@ -124,21 +127,19 @@ final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootF
     }
 
     @Override
-    public <T> RootFetchSet<X> setQueryParameter(QueryParameter<T> parameter, T value) {
+    public <T> RootFetchSet<X> setQueryParameter(@NotNull QueryParameter<T> parameter, T value) {
         requireNonNull(parameter, "parameter");
         queryParameters.put(parameter, value);
         return this;
     }
 
     @Override
-    public QueryResultList<X> execute(EntityManager entityManager, EntityRoot<X> entityRoot) {
-        requireNonNull(entityManager, "entityManager");
-        requireNonNull(entityRoot, "entityRoot");
-        return new ExecutionContext(entityManager).execute(entityRoot, this);
+    public QueryResultList<X> execute(@NotNull EntityRoot<X> entityRoot) {
+        return new ExecutionContext(queryProvider).execute(entityRoot, this);
     }
 
     @Override
-    public EntityResultList<X> entityQuery(EntityManager entityManager, EntityRoot<X> entityRoot) {
+    public EntityResultList<X> entityQuery(@NotNull EntityRoot<X> entityRoot) {
         throw new UnsupportedOperationException();
     }
 

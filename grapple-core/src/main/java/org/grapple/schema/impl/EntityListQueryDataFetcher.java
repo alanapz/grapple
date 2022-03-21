@@ -10,9 +10,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import graphql.language.SelectionSet;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
+
 import org.grapple.query.QueryResultList;
 import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
@@ -69,7 +71,7 @@ final class EntityListQueryDataFetcher<X> implements DataFetcher<Map<String, Obj
     }
 
     private RootFetchSet<X> buildFetchSet(DataFetchingEnvironment environment, SelectionSet selectionSet) {
-        final RootFetchSet<X> fetchSet = SchemaUtils.buildFetchSet(environment, queryName, entityClass);
+        final RootFetchSet<X> fetchSet = SchemaUtils.buildFetchSet(ctx, environment, queryName, entityClass);
         // First add all "selects"
         ctx.applyEntitySelection(environment, entityClass, fetchSet, selectionSet);
         final Map<String, Object> arguments = environment.getArguments();

@@ -34,7 +34,7 @@ final class EntityScalarQueryDataFetcher<X> implements DataFetcher<Map<String, O
         if (selectionSet == null) {
             return null;
         }
-        final RootFetchSet<X> fetchSet = SchemaUtils.buildFetchSet(environment, queryName, entityClass);
+        final RootFetchSet<X> fetchSet = SchemaUtils.buildFetchSet(ctx, environment, queryName, entityClass);
         ctx.applyEntitySelection(environment, entityClass, fetchSet, selectionSet);
         fetchSet.setMaxResults(2); // So we can detect if we have non-unique results
         final QueryListenerContext queryListenerContext = ctx.getEntityQueryExecutionListeners().queryStarted(environment, fetchSet, queryName, queryTag);

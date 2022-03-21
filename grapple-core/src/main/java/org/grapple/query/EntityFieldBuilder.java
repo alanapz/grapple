@@ -23,6 +23,7 @@ import org.grapple.core.Chainable;
 import org.grapple.core.MetadataKey;
 import org.grapple.utils.LazyValue;
 import org.grapple.utils.MetadataValues;
+
 import org.jetbrains.annotations.NotNull;
 
 public final class EntityFieldBuilder {
@@ -127,8 +128,8 @@ public final class EntityFieldBuilder {
 
     private static <T> EntityResultType<T> parseAttributeResultType(@NotNull SingularAttribute<?, T> attribute, Boolean nullAllowed) {
         final Class<T> javaType = attribute.getJavaType();
+        // Primitives must be non-null
         if (javaType.isPrimitive()) {
-            // Primitives can't be nullable
             if (Boolean.TRUE.equals(nullAllowed)) {
                 throw new IllegalArgumentException(format("Attribute '%s' cannot be nullable (as has primitive type: '%s')", attribute.getName(), attribute.getJavaType().getName()));
             }
@@ -276,7 +277,7 @@ public final class EntityFieldBuilder {
         final ExpressionJoinBuilder<X, Y> builder = new ExpressionJoinBuilder<X, Y>().apply(joinBuilder);
         final String name = requireNonNullArgument(builder.name, "name required");
         final EntityResultType<Y> resultType = requireNonNullArgument(builder.resultType, "result type required");
-        final JoinSupplier<X, Y> supplier  = requireNonNullArgument(builder.expression, "expression required");
+        final JoinSupplier<X, Y> supplier = requireNonNullArgument(builder.expression, "expression required");
         final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
         return new EntityJoin<X, Y>() {
 
