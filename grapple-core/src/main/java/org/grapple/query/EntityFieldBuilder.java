@@ -257,15 +257,11 @@ public final class EntityFieldBuilder {
         };
     }
 
-    public static <X, Y> EntityJoin<X, Y> join(String name, EntityResultType<Y> resultType, JoinSupplier<X, Y> supplier) {
-        requireNonNull(name, "name");
-        requireNonNull(resultType, "resultType");
-        requireNonNull(supplier, "supplier");
+    public static <X, Y> EntityJoin<X, Y> join(@NotNull String name, @NotNull EntityResultType<Y> resultType, @NotNull JoinSupplier<X, Y> supplier) {
         return expressionJoin(fieldBuilder -> fieldBuilder.name(name).resultType(resultType).expression(supplier));
     }
 
-    public static <X, Y> EntityJoin<X, Y> expressionJoin(Consumer<ExpressionJoinBuilder<X, Y>> joinBuilder) {
-        requireNonNull(joinBuilder, "joinBuilder");
+    public static <X, Y> EntityJoin<X, Y> expressionJoin(@NotNull Consumer<ExpressionJoinBuilder<X, Y>> joinBuilder) {
         final ExpressionJoinBuilder<X, Y> builder = new ExpressionJoinBuilder<X, Y>().apply(joinBuilder);
         final String name = requireNonNullArgument(builder.name, "name required");
         final EntityResultType<Y> resultType = requireNonNullArgument(builder.resultType, "result type required");

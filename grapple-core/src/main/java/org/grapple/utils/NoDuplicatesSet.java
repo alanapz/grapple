@@ -9,6 +9,8 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.jetbrains.annotations.NotNull;
+
 public class NoDuplicatesSet<T> implements Set<T> {
 
     private final Set<T> backingSet;
@@ -56,7 +58,7 @@ public class NoDuplicatesSet<T> implements Set<T> {
     }
 
     @Override
-    public <T1> T1[] toArray(T1[] a) {
+    public <T1> T1[] toArray(@NotNull T1[] a) {
         return backingSet.toArray(a);
     }
 
@@ -72,7 +74,7 @@ public class NoDuplicatesSet<T> implements Set<T> {
     }
 
     @Override
-    public boolean containsAll(Collection<?> c) {
+    public boolean containsAll(@NotNull Collection<?> c) {
         return backingSet.containsAll(c);
     }
 
@@ -83,12 +85,12 @@ public class NoDuplicatesSet<T> implements Set<T> {
     }
 
     @Override
-    public boolean retainAll(Collection<?> c) {
+    public boolean retainAll(@NotNull Collection<?> c) {
         return backingSet.retainAll(c);
     }
 
     @Override
-    public boolean removeAll(Collection<?> c) {
+    public boolean removeAll(@NotNull Collection<?> c) {
         return backingSet.removeAll(c);
     }
 

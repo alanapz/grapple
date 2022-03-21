@@ -14,6 +14,7 @@ import org.grapple.query.QueryResultRow;
 import org.grapple.query.RootFetchSet;
 import org.grapple.query.TabularResultList;
 import org.grapple.schema.NonScalarQueryResultException;
+import org.jetbrains.annotations.NotNull;
 
 final class QueryResultListImpl<X> implements QueryResultList<X> {
 
@@ -74,6 +75,7 @@ final class QueryResultListImpl<X> implements QueryResultList<X> {
         return new TabularResultListImpl(totalResults, results);
     }
 
+    @NotNull
     @Override
     public Iterator<QueryResultRow<X>> iterator() {
         return seq(results).<QueryResultRow<X>> map(result -> new QueryResultRowImpl<>(rootFetchSet, result)).iterator();

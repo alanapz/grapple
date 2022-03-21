@@ -3,6 +3,7 @@ package org.grapple.query;
 import java.util.List;
 import java.util.function.Consumer;
 import javax.persistence.EntityManager;
+import org.jetbrains.annotations.NotNull;
 
 public interface RootFetchSet<X> extends FetchSet<X> {
 
@@ -25,19 +26,19 @@ public interface RootFetchSet<X> extends FetchSet<X> {
     EntityResultList<X> entityQuery(EntityManager entityManager, EntityRoot<X> entityRoot);
 
     @Override
-    RootFetchSet<X> select(EntityField<X, ?> selection);
+    RootFetchSet<X> select(@NotNull EntityField<X, ?> selection);
 
     @Override
-    <Y> RootFetchSet<X> join(EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer);
+    <Y> RootFetchSet<X> join(@NotNull EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer);
 
     @Override
-    RootFetchSet<X> filter(EntityFilter<X> filter);
+    RootFetchSet<X> filter(@NotNull EntityFilter<X> filter);
 
     @Override
-    RootFetchSet<X> orderBy(QueryField<X, ?> field, SortDirection direction);
+    RootFetchSet<X> orderBy(@NotNull QueryField<X, ?> field, @NotNull SortDirection direction);
 
     @Override
-    RootFetchSet<X> orderBy(EntitySortKey<X> field, SortDirection direction);
+    RootFetchSet<X> orderBy(@NotNull EntitySortKey<X> field, @NotNull SortDirection direction);
 
     @Override
     RootFetchSet<X> apply(Consumer<FetchSet<X>> consumer); // Shame we can't type it as Consumer<RootFetchSet>

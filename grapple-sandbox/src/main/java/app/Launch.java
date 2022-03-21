@@ -4,10 +4,7 @@ import static graphql.ExecutionInput.newExecutionInput;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +13,7 @@ import java.util.Set;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
+
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;
 import graphql.GraphQL;
@@ -34,12 +32,14 @@ import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntitySchema;
 import org.grapple.schema.EntitySchemaListener;
 import org.grapple.schema.EntitySchemaResult;
+import org.grapple.schema.EntitySchemaScannerCallback;
 import org.grapple.schema.FieldFilterDefinition;
 import org.grapple.schema.impl.EntitySchemaProvider;
 import org.grapple.schema.instrumentation.DebugInstrumentationCallback;
 import sandbox.grapple.CompanyField;
 import sandbox.grapple.UserField;
 import sandbox.grapple.UserPrivateMessageField;
+import sandbox.grapple.entity.Company;
 import sandbox.grapple.entity.User;
 import sandbox.grapple.entity.UserPrivateMessage;
 
@@ -121,6 +121,14 @@ public class Launch {
 
     public static void main(String[] args) throws Exception {
 
+
+        BasicTest basicTest = new BasicTest();
+        basicTest.go();
+
+        System.exit(0);
+
+/*
+
         DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
         System.out.println(formatter.format(Instant.now()));
         System.out.println(Instant.from(formatter.parse(formatter.format(Instant.now()))));
@@ -137,7 +145,7 @@ public class Launch {
         System.out.println(DateTimeFormatter.RFC_1123_DATE_TIME.format(localDateTime));
 
         System.exit(0);
-
+*/
 //        System.getProperties().put("entityManager", entityManager);
 //        System.getProperties().put("usersRoot", entityRoot(User.class));
 
@@ -148,6 +156,8 @@ public class Launch {
 //        parameterTest(entityManager);
 
         final EntitySchema entitySchema = EntitySchemaProvider.newSchema();
+        entitySchema.buildEntitySchemaScanner(new EntitySchemaScannerCallback(){}).importDefinitions(CompanyField.class);
+        entitySchema.buildEntitySchemaScanner(new EntitySchemaScannerCallback(){}).importDefinitions(UserField.class);
         entitySchema.addSchemaListener(new EntitySchemaListener(){
 
             @Override
@@ -198,9 +208,11 @@ public class Launch {
             });
         });
 
+        entitySchema.addEntity(Company.class);
+
 //        entitySchema.getEntity(User.class).addQuery(queryBuilder ->
 //        {
-//            queryBuilder.setQueryName("listAllUsers");
+//            queryBuilder.setName("listAllUsers");
 //            queryBuilder.setQueryType(EntityQueryType.LIST);
 //            queryBuilder.setQueryResolver(QueryResolverFactory.defaultQueryResolver(emf, entityRoot(User.class)));
 //            queryBuilder.addParameter(new GenericLiteral<Set<Integer>>() {}, parameterBuilder -> {
@@ -366,7 +378,6 @@ entitySchema.addEntity(BillingEntity.class).addFields(BillingEntityFetches.ID, B
 
         SchemaPrinter printer = new SchemaPrinter(SchemaPrinter.Options.defaultOptions()
                 .includeScalarTypes(true)
-                .includeExtendedScalarTypes(true)
                 .includeIntrospectionTypes(false)
                 .includeDirectives(false)
                 .includeSchemaDefinition(true));

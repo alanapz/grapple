@@ -39,6 +39,7 @@ public final class GrappleScalars {
                     throw new CoercingSerializeException(format("Expected a 'java.time.YearMonth' object but received: %s", typeName(input)));
                 }
 
+                @NotNull
                 @Override
                 public java.time.YearMonth parseValue(@NotNull Object input) throws CoercingParseValueException {
                     if (input instanceof java.time.YearMonth) {
@@ -54,6 +55,7 @@ public final class GrappleScalars {
                     throw new CoercingParseValueException(format("Expected a 'java.lang.String' object but was %s", typeName(input)));
                 }
 
+                @NotNull
                 @Override
                 public YearMonth parseLiteral(@NotNull Object input) throws CoercingParseLiteralException {
                     if (input instanceof StringValue) {
@@ -74,7 +76,7 @@ public final class GrappleScalars {
                 private final Pattern epochMillisPattern = Pattern.compile("^(\\d+)$");
 
                 @Override
-                public String serialize(Object input) {
+                public String serialize(@NotNull Object input) {
                     try {
                         if (input instanceof Instant) {
                             return formatter.format((Instant) input);
@@ -89,6 +91,7 @@ public final class GrappleScalars {
                     }
                 }
 
+                @NotNull
                 @Override
                 public Instant parseValue(@NotNull Object input) {
                     try {
@@ -108,6 +111,7 @@ public final class GrappleScalars {
                     }
                 }
 
+                @NotNull
                 @Override
                 public Instant parseLiteral(@NotNull Object input) throws CoercingParseLiteralException {
                     try {

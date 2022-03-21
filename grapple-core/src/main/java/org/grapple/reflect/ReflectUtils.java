@@ -7,6 +7,7 @@ import static java.util.Objects.requireNonNull;
 import static org.grapple.reflect.ClassLiteral.classLiteral;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -17,9 +18,11 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+
 import graphql.schema.GraphQLType;
 import org.grapple.utils.NoDuplicatesMap;
 import org.grapple.utils.UnexpectedException;
+import org.jetbrains.annotations.NotNull;
 import org.reflections.Reflections;
 import org.reflections.ReflectionsException;
 import org.reflections.scanners.SubTypesScanner;
@@ -33,6 +36,14 @@ public final class ReflectUtils {
 
     private ReflectUtils() {
 
+    }
+
+    public static <A extends Annotation> Optional<A> getDeclaredAnnotation(@NotNull Class<?> element, @NotNull Class<A> aClass) {
+        return Optional.ofNullable(element.getDeclaredAnnotation(aClass));
+    }
+
+    public static <A extends Annotation> Optional<A> getDeclaredAnnotation(@NotNull AccessibleObject element, @NotNull Class<A> aClass) {
+        return Optional.ofNullable(element.getDeclaredAnnotation(aClass));
     }
 
     public static GraphQLType wrapNonNullIfNecessary(GraphQLType unwrappedType) {

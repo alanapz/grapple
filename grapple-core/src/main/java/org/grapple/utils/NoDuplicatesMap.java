@@ -1,7 +1,6 @@
 package org.grapple.utils;
 
 import static java.lang.String.format;
-import static java.util.Objects.requireNonNull;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,17 +22,17 @@ public final class NoDuplicatesMap<K, V> implements Map<K, V> {
         this(new HashMap<>(), defaultOnDuplicate);
     }
 
-    public NoDuplicatesMap(Map<K, V> backingMap) {
+    public NoDuplicatesMap(@NotNull Map<K, V> backingMap) {
         this(backingMap, defaultOnDuplicate);
     }
 
-    public NoDuplicatesMap(Function<? super K, RuntimeException> onDuplicate) {
+    public NoDuplicatesMap(@NotNull Function<? super K, RuntimeException> onDuplicate) {
         this(new HashMap<>(), onDuplicate);
     }
 
-    public NoDuplicatesMap(Map<K, V> backingMap, Function<? super K, RuntimeException> onDuplicate) {
-        this.backingMap = requireNonNull(backingMap);
-        this.onDuplicate = requireNonNull(onDuplicate);
+    public NoDuplicatesMap(@NotNull Map<K, V> backingMap, @NotNull Function<? super K, RuntimeException> onDuplicate) {
+        this.backingMap = backingMap;
+        this.onDuplicate = onDuplicate;
     }
 
     private void checkNotExists(K key) {

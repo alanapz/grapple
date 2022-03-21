@@ -24,6 +24,7 @@ import org.grapple.query.QueryParameter;
 import org.grapple.query.QueryResultList;
 import org.grapple.query.RootFetchSet;
 import org.grapple.query.SortDirection;
+import org.jetbrains.annotations.NotNull;
 
 final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootFetchSet<X> {
 
@@ -62,27 +63,27 @@ final class RootFetchSetImpl<X> extends AbstractFetchSetImpl<X> implements RootF
     }
 
     @Override
-    public RootFetchSet<X> select(EntityField<X, ?> selection) {
+    public RootFetchSet<X> select(@NotNull EntityField<X, ?> selection) {
         return (RootFetchSet<X>) super.select(selection);
     }
 
     @Override
-    public <Y> RootFetchSet<X> join(EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer) {
+    public <Y> RootFetchSet<X> join(@NotNull EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer) {
         return (RootFetchSet<X>) super.join(join, consumer);
     }
 
     @Override
-    public RootFetchSet<X> filter(EntityFilter<X> filter) {
+    public RootFetchSet<X> filter(@NotNull EntityFilter<X> filter) {
         return (RootFetchSet<X>) super.filter(filter);
     }
 
     @Override
-    public RootFetchSet<X> orderBy(QueryField<X, ?> field, SortDirection direction) {
+    public RootFetchSet<X> orderBy(@NotNull QueryField<X, ?> field, @NotNull SortDirection direction) {
         return (RootFetchSet<X>) super.orderBy(field, direction);
     }
 
     @Override
-    public RootFetchSet<X> orderBy(EntitySortKey<X> field, SortDirection direction) {
+    public RootFetchSet<X> orderBy(@NotNull EntitySortKey<X> field, @NotNull SortDirection direction) {
         return (RootFetchSet<X>) super.orderBy(field, direction);
     }
 
