@@ -7,8 +7,6 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.entitySelectionFieldWiring;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
 import graphql.schema.GraphQLFieldDefinition;
 import graphql.schema.GraphQLOutputType;
 import org.grapple.core.ElementVisibility;
@@ -18,7 +16,7 @@ import org.grapple.query.QueryField;
 import org.grapple.schema.EntityDefinition;
 import org.grapple.schema.EntityFieldDefinition;
 import org.grapple.utils.UnexpectedException;
-import org.grapple.utils.Utils;
+import org.jetbrains.annotations.NotNull;
 
 final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, T> {
 
@@ -36,7 +34,7 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
 
     private ElementVisibility visibility;
 
-    EntityFieldDefinitionImpl(EntitySchemaImpl schema, EntityDefinitionImpl<X> entity, EntityField<X, T> field) {
+    EntityFieldDefinitionImpl(@NotNull EntitySchemaImpl schema, @NotNull EntityDefinitionImpl<X> entity, @NotNull EntityField<X, T> field) {
         this.schema = requireNonNull(schema, "schema");
         this.entity = requireNonNull(entity, "entity");
         this.field = requireNonNull(field, "field");
@@ -128,15 +126,5 @@ final class EntityFieldDefinitionImpl<X, T> implements EntityFieldDefinition<X, 
 
     boolean isFilterable(SchemaBuilderContext ctx) {
         return (field instanceof QueryField<?, ?>) && isScalar(unwrapNonNull(schema.getResultTypeFor(ctx, field.getResultType())));
-    }
-
-    @Override
-    public EntityFieldDefinition<X, T> apply(Consumer<EntityFieldDefinition<X, T>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntityFieldDefinition<X, T>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 }

@@ -30,6 +30,7 @@ import org.grapple.query.QueryParameter;
 import org.grapple.utils.LazyValue;
 import org.grapple.utils.NoDuplicatesMap;
 import org.grapple.utils.UnexpectedException;
+import org.jetbrains.annotations.NotNull;
 
 abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
 
@@ -51,7 +52,7 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
 
     private final Map<EntityField<X, ?>, NonQuerySelection<?>> nonQuerySelections = new NoDuplicatesMap<>();
 
-    AbstractEntityContextImpl(RootFetchSetImpl<?> rootFetchSet, QueryWrapper queryWrapper, QueryBuilder queryBuilder, Supplier<? extends From<?, X>> entity) {
+    AbstractEntityContextImpl(@NotNull RootFetchSetImpl<?> rootFetchSet, @NotNull QueryWrapper queryWrapper, @NotNull QueryBuilder queryBuilder, @NotNull Supplier<? extends From<?, X>> entity) {
         this.rootFetchSet = requireNonNull(rootFetchSet, "rootFetchSet");
         this.queryWrapper = requireNonNull(queryWrapper, "queryWrapper");
         this.queryBuilder = requireNonNull(queryBuilder, "queryBuilder");
@@ -64,13 +65,13 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    public <T> Path<T> get(SingularAttribute<? super X, T> attribute) {
+    public <T> Path<T> get(@NotNull SingularAttribute<? super X, T> attribute) {
         requireNonNull(attribute, "attribute");
         return entity.get().get(attribute);
     }
 
     @Override
-    public <T> Expression<T> get(QueryField<X, T> selection) {
+    public <T> Expression<T> get(@NotNull QueryField<X, T> selection) {
         requireNonNull(selection, "selection");
         final @SuppressWarnings("unchecked") Expression<T> existing = (Expression<T>) selections.get(selection);
         if (existing != null) {
@@ -85,7 +86,7 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    public <Y> JoinedEntityContextImpl<Y> join(EntityJoin<X, Y> join) {
+    public <Y> JoinedEntityContextImpl<Y> join(@NotNull EntityJoin<X, Y> join) {
         requireNonNull(join, "join");
         final @SuppressWarnings("unchecked") JoinedEntityContextImpl<Y> existing = (JoinedEntityContextImpl<Y>) entityJoins.get(join);
         if (existing != null) {
@@ -97,7 +98,7 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
     }
 
     @Override
-    public <Y> JoinedEntityContextImpl<Y> join(SingularAttribute<X, Y> attribute) {
+    public <Y> JoinedEntityContextImpl<Y> join(@NotNull SingularAttribute<X, Y> attribute) {
         requireNonNull(attribute, "attribute");
         final @SuppressWarnings("unchecked") JoinedEntityContextImpl<Y> existing = (JoinedEntityContextImpl<Y>) attributeJoins.get(attribute);
         if (existing != null) {
@@ -189,19 +190,9 @@ abstract class AbstractEntityContextImpl<X> implements EntityContext<X> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> T getQueryParameter(QueryParameter<T> parameter) {
+    public <T> T getQueryParameter(@NotNull QueryParameter<T> parameter) {
         requireNonNull(parameter, "parameter");
         return (T) rootFetchSet.getQueryParameters().get(parameter);
-    }
-
-    @Override
-    public EntityContext<X> apply(Consumer<EntityContext<X>> consumer) {
-        return org.grapple.utils.Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntityContext<X>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 
     private static final class AttributeJoinImpl<Y> implements AttributeJoin<Y> {

@@ -15,6 +15,7 @@ import graphql.schema.CoercingParseLiteralException;
 import graphql.schema.CoercingParseValueException;
 import graphql.schema.CoercingSerializeException;
 import graphql.schema.GraphQLScalarType;
+import org.jetbrains.annotations.NotNull;
 
 public final class GrappleScalars {
 
@@ -24,7 +25,7 @@ public final class GrappleScalars {
             .coercing(new Coercing<YearMonth, String>() {
 
                 @Override
-                public String serialize(Object input) {
+                public String serialize(@NotNull Object input) {
                     if (input instanceof YearMonth) {
                         return ((YearMonth) input).toString();
                     }
@@ -39,7 +40,7 @@ public final class GrappleScalars {
                 }
 
                 @Override
-                public java.time.YearMonth parseValue(Object input) throws CoercingParseValueException {
+                public java.time.YearMonth parseValue(@NotNull Object input) throws CoercingParseValueException {
                     if (input instanceof java.time.YearMonth) {
                         return ((java.time.YearMonth) input);
                     }
@@ -54,7 +55,7 @@ public final class GrappleScalars {
                 }
 
                 @Override
-                public YearMonth parseLiteral(Object input) throws CoercingParseLiteralException {
+                public YearMonth parseLiteral(@NotNull Object input) throws CoercingParseLiteralException {
                     if (input instanceof StringValue) {
                         return java.time.YearMonth.parse(((StringValue) input).getValue());
                     }
@@ -89,7 +90,7 @@ public final class GrappleScalars {
                 }
 
                 @Override
-                public Instant parseValue(Object input) {
+                public Instant parseValue(@NotNull Object input) {
                     try {
                         if (input instanceof Instant) {
                             return (Instant) input;
@@ -108,7 +109,7 @@ public final class GrappleScalars {
                 }
 
                 @Override
-                public Instant parseLiteral(Object input) throws CoercingParseLiteralException {
+                public Instant parseLiteral(@NotNull Object input) throws CoercingParseLiteralException {
                     try {
                         if (input instanceof IntValue) {
                             return Instant.ofEpochMilli(((IntValue) input).getValue().longValue());

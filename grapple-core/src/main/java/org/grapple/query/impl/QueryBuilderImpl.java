@@ -3,6 +3,7 @@ package org.grapple.query.impl;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Date;
@@ -68,7 +69,20 @@ final class QueryBuilderImpl implements QueryBuilder {
     @Override
     public Expression<Boolean> toExpression(Predicate predicate) {
         requireNonNull(predicate, "predicate");
-        return this.<Boolean>selectCase().when(predicate, trueLiteral()).otherwise(falseLiteral());
+        final Expression<Boolean> result = this.<Boolean>selectCase().when(predicate, trueLiteral()).otherwise(falseLiteral());
+        /// XXXX: PATCH UP HIBERNATE BUG
+        if (result.getClass().getSimpleName().equals("SearchedCaseExpression")) {
+            try {
+                Class<?> tupleElement = Class.forName("org.hibernate.jpa.criteria.expression.AbstractTupleElement");
+                Field field = tupleElement.getDeclaredField("javaType");
+                field.setAccessible(true);
+                field.set(result, Boolean.class);
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
     }
 
     @Override

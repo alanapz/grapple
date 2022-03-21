@@ -45,6 +45,7 @@ import org.grapple.schema.EntitySchemaListener;
 import org.grapple.utils.NoDuplicatesMap;
 import org.grapple.utils.NoDuplicatesSet;
 import org.grapple.utils.Utils;
+import org.jetbrains.annotations.NotNull;
 
 final class EntityDefinitionImpl<X> implements EntityDefinition<X>, Validatable {
 
@@ -407,16 +408,6 @@ final class EntityDefinitionImpl<X> implements EntityDefinition<X>, Validatable 
         }
         customFilters.forEach(EntityFilterItemDefinitionImpl::validate);
         queries.forEach(EntityQueryDefinitionImpl::validate);
-    }
-
-    @Override
-    public EntityDefinition<X> apply(Consumer<EntityDefinition<X>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntityDefinition<X>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 
     @Override

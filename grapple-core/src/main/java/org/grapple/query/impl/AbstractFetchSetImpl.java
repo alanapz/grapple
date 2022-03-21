@@ -10,7 +10,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
+
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityFilter;
 import org.grapple.query.EntityJoin;
@@ -99,16 +99,6 @@ abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
         requireNonNull(direction, "direction");
         fetchRoot().orderBy.add(entityOrderBy(this, direction, sortKey));
         return this;
-    }
-
-    @Override
-    public FetchSet<X> apply(Consumer<FetchSet<X>> consumer) {
-        return org.grapple.utils.Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<FetchSet<X>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 
     protected abstract RootFetchSetImpl<?> fetchRoot();

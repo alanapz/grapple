@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Date;
 import java.util.Map;
 import org.grapple.reflect.TypeLiteral;
 import org.grapple.utils.NoDuplicatesMap;
@@ -128,6 +129,7 @@ public final class EntityResultType<T> {
         addPredefinedType(classLiteral(Instant.class));
         addPredefinedType(classLiteral(LocalDate.class));
         addPredefinedType(classLiteral(LocalTime.class));
+        addPredefinedType(classLiteral(Date.class));
     }
 
     static void addPredefinedType(TypeLiteral<?> type) {

@@ -12,15 +12,18 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.YearMonth;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLOutputType;
 import org.grapple.scalars.GrappleScalars;
+import org.jetbrains.annotations.NotNull;
 
 // Used to store predefined, in-built type mappings
 // This class is used as a last resort when we can't find any associated class
@@ -44,28 +47,28 @@ final class DefaultTypeMappings {
 
         // Primitives
         addType(boolean.class, nonNull(Scalars.GraphQLBoolean));
-        addType(byte.class, nonNull(Scalars.GraphQLByte));
-        addType(short.class, nonNull(Scalars.GraphQLShort));
+        addType(byte.class, nonNull(ExtendedScalars.GraphQLByte));
+        addType(short.class, nonNull(ExtendedScalars.GraphQLShort));
         addType(int.class, nonNull(Scalars.GraphQLInt));
-        addType(long.class, nonNull(Scalars.GraphQLLong));
-        addType(char.class, nonNull(Scalars.GraphQLChar));
+        addType(long.class, nonNull(ExtendedScalars.GraphQLLong));
+        addType(char.class, nonNull(ExtendedScalars.GraphQLChar));
         addType(float.class, nonNull(Scalars.GraphQLFloat));
         addType(double.class, nonNull(Scalars.GraphQLFloat)); // No "double" type
 
         // Primitive object wrappers
         addType(Boolean.class, Scalars.GraphQLBoolean);
-        addType(Byte.class, Scalars.GraphQLByte);
-        addType(Short.class, Scalars.GraphQLShort);
+        addType(Byte.class, ExtendedScalars.GraphQLByte);
+        addType(Short.class, ExtendedScalars.GraphQLShort);
         addType(Integer.class, Scalars.GraphQLInt);
-        addType(Long.class, Scalars.GraphQLLong);
-        addType(Character.class, Scalars.GraphQLChar);
+        addType(Long.class, ExtendedScalars.GraphQLLong);
+        addType(Character.class, ExtendedScalars.GraphQLChar);
         addType(Float.class, Scalars.GraphQLFloat);
         addType(Double.class, Scalars.GraphQLFloat); // No "Double" type
 
         addType(String.class, Scalars.GraphQLString);
         addType(UUID.class, Scalars.GraphQLID);
-        addType(BigDecimal.class, Scalars.GraphQLBigDecimal);
-        addType(BigInteger.class, Scalars.GraphQLBigInteger);
+        addType(BigDecimal.class, ExtendedScalars.GraphQLBigDecimal);
+        addType(BigInteger.class, ExtendedScalars.GraphQLBigInteger);
 
         addType(LocalDate.class, ExtendedScalars.Date);
         addType(OffsetDateTime.class, ExtendedScalars.DateTime);
@@ -79,24 +82,21 @@ final class DefaultTypeMappings {
         // INPUT ONLY TYPES
 
         addInputOnlyType(Instant.class, GrappleScalars.UtcTimestamp);
+
+        // DATE HACK
+        addType(Date.class, ExtendedScalars.DateTime);
     }
 
-    private static <V extends GraphQLInputType & GraphQLOutputType> void addType(Type type, V gqlType) {
-        requireNonNull(type, "type");
-        requireNonNull(gqlType, "gqlType");
+    private static <V extends GraphQLInputType & GraphQLOutputType> void addType(@NotNull Type type, @NotNull V gqlType) {
         inputTypeMappings.put(type, gqlType);
         outputTypeMappings.put(type, gqlType);
     }
 
-    private static void addInputOnlyType(Type type, GraphQLInputType gqlType) {
-        requireNonNull(type, "type");
-        requireNonNull(gqlType, "gqlType");
+    private static void addInputOnlyType(@NotNull Type type, @NotNull GraphQLInputType gqlType) {
         inputTypeMappings.put(type, gqlType);
     }
 
-    private static void addOutputOnlyType(Type type, GraphQLOutputType gqlType) {
-        requireNonNull(type, "klazz");
-        requireNonNull(gqlType, "gqlType");
+    private static void addOutputOnlyType(@NotNull Type type, @NotNull GraphQLOutputType gqlType) {
         outputTypeMappings.put(type, gqlType);
     }
 }

@@ -4,12 +4,11 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
+
 import org.grapple.query.EntityField;
 import org.grapple.query.EntityJoin;
 import org.grapple.query.FetchSet;
 import org.grapple.query.QueryResultRow;
-import org.grapple.utils.Utils;
 
 final class QueryResultRowImpl<X> implements QueryResultRow<X> {
 
@@ -73,15 +72,5 @@ final class QueryResultRowImpl<X> implements QueryResultRow<X> {
     @Override
     public String toString() {
         return resultRow.toString();
-    }
-
-    @Override
-    public QueryResultRow<X> apply(Consumer<QueryResultRow<X>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<QueryResultRow<X>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 }

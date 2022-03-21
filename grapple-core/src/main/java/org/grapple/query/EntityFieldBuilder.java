@@ -3,6 +3,7 @@ package org.grapple.query;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.query.EntityResultType.entityResultType;
+import static org.grapple.query.EntityResultType.nonNull;
 import static org.grapple.utils.Utils.coalesce;
 import static org.grapple.utils.Utils.markAsUsed;
 import static org.grapple.utils.Utils.requireNonNullArgument;
@@ -17,11 +18,12 @@ import javax.persistence.criteria.Join;
 import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Path;
 import javax.persistence.metamodel.SingularAttribute;
+
 import org.grapple.core.Chainable;
 import org.grapple.core.MetadataKey;
 import org.grapple.utils.LazyValue;
 import org.grapple.utils.MetadataValues;
-import org.grapple.utils.Utils;
+import org.jetbrains.annotations.NotNull;
 
 public final class EntityFieldBuilder {
 
@@ -29,8 +31,7 @@ public final class EntityFieldBuilder {
 
     }
 
-    public static <X, T> QueryField<X, T> literalField(Consumer<LiteralFieldBuilder<X, T>> fieldBuilder) {
-        requireNonNull(fieldBuilder, "fieldBuilder");
+    public static <X, T> QueryField<X, T> literalField(@NotNull Consumer<LiteralFieldBuilder<X, T>> fieldBuilder) {
         final LiteralFieldBuilder<X, T> builder = new LiteralFieldBuilder<X, T>().apply(fieldBuilder);
         final String name = requireNonNullArgument(builder.name, "name required");
         final Class<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
@@ -53,12 +54,12 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Expression<T> getExpression(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            public Expression<T> getExpression(@NotNull EntityContext<X> ctx, @NotNull QueryBuilder queryBuilder) {
                 return (value == null ? queryBuilder.nullLiteral(resultType) : queryBuilder.literal(value));
             }
 
             @Override
-            public Expression<T> getOrderBy(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            public Expression<T> getOrderBy(@NotNull EntityContext<X> ctx, @NotNull QueryBuilder queryBuilder) {
                 return getExpression(ctx, queryBuilder);
             }
 
@@ -69,15 +70,13 @@ public final class EntityFieldBuilder {
         };
     }
 
-    public static <X, T> QueryField<X, T> attributeField(SingularAttribute<X, T> attribute) {
+    public static <X, T> QueryField<X, T> attributeField(@NotNull SingularAttribute<? super X, T> attribute) {
         return attributeField(attribute, null);
     }
 
-    public static <X, T> QueryField<X, T> attributeField(SingularAttribute<X, T> attribute, Consumer<AttributeFieldBuilder<X, T>> fieldBuilder) {
-        requireNonNull(attribute, "attribute");
+    public static <X, T> QueryField<X, T> attributeField(@NotNull SingularAttribute<? super X, T> attribute, Consumer<AttributeFieldBuilder<X, T>> fieldBuilder) {
         final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(fieldBuilder);
         final String name = coalesce(builder.name, attribute.getName());
-        final EntityResultType<T> resultType = entityResultType(attribute.getJavaType(), coalesce(builder.nullAllowed, attribute.isOptional()));
         final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
         metadata.putDefault(EntityMetadataKeys.Description, QueryUtils.getDefaultDescription(attribute));
         metadata.putDefault(EntityMetadataKeys.DeprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
@@ -88,13 +87,13 @@ public final class EntityFieldBuilder {
                 return name;
             }
 
-            public Class<X> getEntityType() {
+            public Class<? super X> getEntityType() {
                 return attribute.getDeclaringType().getJavaType();
             }
 
             @Override
             public EntityResultType<T> getResultType() {
-                return resultType;
+                return parseAttributeResultType(attribute, builder.nullAllowed);
             }
 
             @Override
@@ -105,12 +104,12 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Path<T> getExpression(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            public Path<T> getExpression(@NotNull EntityContext<X> ctx, @NotNull QueryBuilder queryBuilder) {
                 return ctx.get(attribute);
             }
 
             @Override
-            public Path<T> getOrderBy(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            public Path<T> getOrderBy(@NotNull EntityContext<X> ctx, @NotNull QueryBuilder queryBuilder) {
                 return getExpression(ctx, queryBuilder);
             }
 
@@ -126,8 +125,19 @@ public final class EntityFieldBuilder {
         };
     }
 
-    public static <X, T> QueryField<X, T> expressionField(Consumer<ExpressionFieldBuilder<X, T>> fieldBuilder) {
-        requireNonNull(fieldBuilder, "fieldBuilder");
+    private static <T> EntityResultType<T> parseAttributeResultType(@NotNull SingularAttribute<?, T> attribute, Boolean nullAllowed) {
+        final Class<T> javaType = attribute.getJavaType();
+        if (javaType.isPrimitive()) {
+            // Primitives can't be nullable
+            if (Boolean.TRUE.equals(nullAllowed)) {
+                throw new IllegalArgumentException(format("Attribute '%s' cannot be nullable (as has primitive type: '%s')", attribute.getName(), attribute.getJavaType().getName()));
+            }
+            return nonNull(javaType);
+        }
+        return entityResultType(javaType, coalesce(nullAllowed, attribute.isOptional()));
+    }
+
+    public static <X, T> QueryField<X, T> expressionField(@NotNull Consumer<ExpressionFieldBuilder<X, T>> fieldBuilder) {
         final ExpressionFieldBuilder<X, T> builder = new ExpressionFieldBuilder<X, T>().apply(fieldBuilder);
         final String name = requireNonNullArgument(builder.name, "name required");
         final EntityResultType<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
@@ -154,12 +164,12 @@ public final class EntityFieldBuilder {
             }
 
             @Override
-            public Expression<T> getExpression(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            public Expression<T> getExpression(@NotNull EntityContext<X> ctx, @NotNull QueryBuilder queryBuilder) {
                 return queryBuilder.wrapPredicateIfNecessary(expressionResolver.get(ctx, queryBuilder));
             }
 
             @Override
-            public Expression<?> getOrderBy(EntityContext<X> ctx, QueryBuilder queryBuilder) {
+            public Expression<?> getOrderBy(@NotNull EntityContext<X> ctx, @NotNull QueryBuilder queryBuilder) {
                 return orderBy.get(ctx, queryBuilder);
             }
 
@@ -175,8 +185,7 @@ public final class EntityFieldBuilder {
         };
     }
 
-    public static <X, T> NonQueryField<X, T> nonQueryField(Consumer<NonQueryFieldBuilder<X, T>> fieldBuilder) {
-        requireNonNull(fieldBuilder, "fieldBuilder");
+    public static <X, T> NonQueryField<X, T> nonQueryField(@NotNull Consumer<NonQueryFieldBuilder<X, T>> fieldBuilder) {
         final NonQueryFieldBuilder<X, T> builder = new NonQueryFieldBuilder<X, T>().apply(fieldBuilder);
         final String name = requireNonNullArgument(builder.name, "name required");
         final EntityResultType<T> resultType = requireNonNullArgument(builder.resultType, "result type required");
@@ -216,15 +225,13 @@ public final class EntityFieldBuilder {
         };
     }
 
-    public static <X, T> EntityJoin<X, T> attributeJoin(SingularAttribute<X, T> attribute) {
+    public static <X, T> EntityJoin<X, T> attributeJoin(@NotNull SingularAttribute<? super X, T> attribute) {
         return attributeJoin(attribute, null);
     }
 
-    public static <X, T> EntityJoin<X, T> attributeJoin(SingularAttribute<X, T> attribute, Consumer<AttributeFieldBuilder<X, T>> joinBuilder) {
-        requireNonNull(attribute, "attribute");
+    public static <X, T> EntityJoin<X, T> attributeJoin(@NotNull SingularAttribute<? super X, T> attribute, Consumer<AttributeFieldBuilder<X, T>> joinBuilder) {
         final AttributeFieldBuilder<X, T> builder = new AttributeFieldBuilder<X, T>().apply(joinBuilder);
         final String name = coalesce(builder.name, attribute.getName());
-        final boolean nullAllowed = coalesce(builder.nullAllowed, attribute.isOptional());
         final MetadataValues metadata = requireNonNull(builder.metadata, "metadata");
         metadata.putDefault(EntityMetadataKeys.Description, QueryUtils.getDefaultDescription(attribute));
         metadata.putDefault(EntityMetadataKeys.DeprecationReason, QueryUtils.getDefaultDeprecationReason(attribute));
@@ -235,13 +242,13 @@ public final class EntityFieldBuilder {
                 return name;
             }
 
-            public Class<X> getEntityType() {
+            public Class<? super X> getEntityType() {
                 return attribute.getDeclaringType().getJavaType();
             }
 
             @Override
             public EntityResultType<T> getResultType() {
-                return entityResultType(attribute.getJavaType(), nullAllowed);
+                return parseAttributeResultType(attribute, builder.nullAllowed);
             }
 
             @Override
@@ -326,19 +333,6 @@ public final class EntityFieldBuilder {
             this.value = value;
             return this;
         }
-
-        @Override
-        public LiteralFieldBuilder<X, T> apply(Consumer<LiteralFieldBuilder<X, T>> consumer) {
-            if (consumer != null) {
-                consumer.accept(this);
-            }
-            return this;
-        }
-
-        @Override
-        public <Z> Z invoke(Function<LiteralFieldBuilder<X, T>, Z> function) {
-            return requireNonNull(function, "function").apply(this);
-        }
     }
 
     public static final class AttributeFieldBuilder<X, T> implements Chainable<AttributeFieldBuilder<X, T>> {
@@ -362,16 +356,6 @@ public final class EntityFieldBuilder {
         public <Z> AttributeFieldBuilder<X, T> metadata(MetadataKey<Z> metadataKey, Z value) {
             metadata.put(metadataKey, value);
             return this;
-        }
-
-        @Override
-        public AttributeFieldBuilder<X, T> apply(Consumer<AttributeFieldBuilder<X, T>> consumer) {
-            return Utils.apply(this, consumer);
-        }
-
-        @Override
-        public <Z> Z invoke(Function<AttributeFieldBuilder<X, T>, Z> function) {
-            return requireNonNull(function, "function").apply(this);
         }
     }
 
@@ -429,16 +413,6 @@ public final class EntityFieldBuilder {
             metadata.put(key, value);
             return this;
         }
-
-        @Override
-        public ExpressionFieldBuilder<X, T> apply(Consumer<ExpressionFieldBuilder<X, T>> consumer) {
-            return Utils.apply(this, consumer);
-        }
-
-        @Override
-        public <Z> Z invoke(Function<ExpressionFieldBuilder<X, T>, Z> function) {
-            return requireNonNull(function, "function").apply(this);
-        }
     }
 
     public static final class NonQueryFieldBuilder<X, T> implements Chainable<NonQueryFieldBuilder<X, T>> {
@@ -484,16 +458,6 @@ public final class EntityFieldBuilder {
             metadata.put(key, value);
             return this;
         }
-
-        @Override
-        public NonQueryFieldBuilder<X, T> apply(Consumer<NonQueryFieldBuilder<X, T>> consumer) {
-            return Utils.apply(this, consumer);
-        }
-
-        @Override
-        public <Z> Z invoke(Function<NonQueryFieldBuilder<X, T>, Z> function) {
-            return requireNonNull(function, "function").apply(this);
-        }
     }
 
     public static final class ExpressionJoinBuilder<X, Y> implements Chainable<ExpressionJoinBuilder<X, Y>> {
@@ -524,16 +488,6 @@ public final class EntityFieldBuilder {
         public <Z> ExpressionJoinBuilder<X, Y> metadata(MetadataKey<Z> key, Z value) {
             metadata.put(key, value);
             return this;
-        }
-
-        @Override
-        public ExpressionJoinBuilder<X, Y> apply(Consumer<ExpressionJoinBuilder<X, Y>> consumer) {
-            return Utils.apply(this, consumer);
-        }
-
-        @Override
-        public <Z> Z invoke(Function<ExpressionJoinBuilder<X, Y>, Z> function) {
-            return requireNonNull(function, "function").apply(this);
         }
     }
 }

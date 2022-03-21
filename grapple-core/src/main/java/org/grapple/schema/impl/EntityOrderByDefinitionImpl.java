@@ -8,8 +8,6 @@ import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.entityOrderByFieldWiring;
 import static org.grapple.schema.impl.RuntimeWiring.entityOrderByJoinWiring;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
 import graphql.schema.GraphQLInputObjectType;
 import graphql.schema.GraphQLInputType;
 import graphql.schema.GraphQLTypeReference;
@@ -19,7 +17,6 @@ import org.grapple.schema.EntityDefinition;
 import org.grapple.schema.EntityFieldDefinition;
 import org.grapple.schema.EntityJoinDefinition;
 import org.grapple.schema.EntityOrderByDefinition;
-import org.grapple.utils.Utils;
 
 final class EntityOrderByDefinitionImpl<X> implements EntityOrderByDefinition<X> {
 
@@ -88,16 +85,6 @@ final class EntityOrderByDefinitionImpl<X> implements EntityOrderByDefinition<X>
                 ctx.addEntityOrderByWiring(entityOrderByJoinWiring(parent.getEntityClass(), joinedEntity.getEntityClass(), join.getName(), join.getJoin()));
             }
         }
-    }
-
-    @Override
-    public EntityOrderByDefinition<X> apply(Consumer<EntityOrderByDefinition<X>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntityOrderByDefinition<X>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 }
 

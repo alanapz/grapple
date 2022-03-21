@@ -6,11 +6,10 @@ import static org.grapple.utils.Utils.readOnlyCopy;
 
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
+
 import org.grapple.core.ElementVisibility;
 import org.grapple.core.Validatable;
 import org.grapple.reflect.TypeLiteral;
-import org.grapple.schema.EntityQueryDefinition;
 import org.grapple.schema.EntityQueryDefinitionParameter;
 import org.grapple.schema.EntityQueryResolver;
 import org.grapple.schema.EntityQueryType;
@@ -143,15 +142,4 @@ final class UserEntityQueryDefinitionImpl<X> implements EntityQueryDefinitionImp
         validate();
         buildAndRegisterEntityQuery(ctx, this);
     }
-
-    @Override
-    public UserEntityQueryDefinitionImpl<X> apply(Consumer<EntityQueryDefinition<X>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntityQueryDefinition<X>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
-    }
 }
-

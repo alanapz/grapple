@@ -5,8 +5,6 @@ import static graphql.schema.GraphQLTypeUtil.unwrapNonNull;
 import static java.util.Objects.requireNonNull;
 import static org.grapple.schema.impl.RuntimeWiring.entityFilterCustomWiring;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
 import graphql.schema.GraphQLInputObjectField;
 import graphql.schema.GraphQLInputType;
 import org.grapple.core.ElementVisibility;
@@ -14,7 +12,6 @@ import org.grapple.reflect.TypeLiteral;
 import org.grapple.schema.EntityDefinition;
 import org.grapple.schema.EntityFilterItemDefinition;
 import org.grapple.schema.EntityFilterItemResolver;
-import org.grapple.utils.Utils;
 
 final class EntityFilterItemDefinitionImpl<X, T> implements EntityFilterItemDefinition<X, T> {
 
@@ -128,15 +125,4 @@ final class EntityFilterItemDefinitionImpl<X, T> implements EntityFilterItemDefi
                 .type((GraphQLInputType) unwrapNonNull(graphQLType))
                 .build();
     }
-
-    @Override
-    public EntityFilterItemDefinition<X, T> apply(Consumer<EntityFilterItemDefinition<X, T>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntityFilterItemDefinition<X, T>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
-    }
 }
-

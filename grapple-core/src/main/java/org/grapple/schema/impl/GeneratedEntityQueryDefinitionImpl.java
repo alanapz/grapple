@@ -8,18 +8,16 @@ import static org.grapple.utils.Utils.readOnlyCopy;
 import java.lang.reflect.Type;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
+
 import org.grapple.core.ElementVisibility;
 import org.grapple.core.Validatable;
 import org.grapple.reflect.EntityQueryMetadata.EntityQueryMethodMetadata;
 import org.grapple.reflect.EntityQueryMetadata.EntityQueryParameterMetadata;
 import org.grapple.reflect.TypeLiteral;
-import org.grapple.schema.EntityQueryDefinition;
 import org.grapple.schema.EntityQueryDefinitionParameter;
 import org.grapple.schema.EntityQueryResolver;
 import org.grapple.schema.EntityQueryType;
 import org.grapple.utils.NoDuplicatesSet;
-import org.grapple.utils.Utils;
 
 final class GeneratedEntityQueryDefinitionImpl<X> implements EntityQueryDefinitionImpl<X> {
 
@@ -148,16 +146,6 @@ final class GeneratedEntityQueryDefinitionImpl<X> implements EntityQueryDefiniti
         buildAndRegisterEntityQuery(ctx, this);
     }
 
-    @Override
-    public GeneratedEntityQueryDefinitionImpl<X> apply(Consumer<EntityQueryDefinition<X>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntityQueryDefinition<X>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
-    }
-
     private static final class GeneratedParameterImpl implements EntityQueryDefinitionParameter<Object>, Validatable {
 
         private final Type type;
@@ -219,16 +207,6 @@ final class GeneratedEntityQueryDefinitionImpl<X> implements EntityQueryDefiniti
         @Override
         public void validate() {
             // Nothing to do here.. for the moment
-        }
-
-        @Override
-        public EntityQueryDefinitionParameter<Object> apply(Consumer<EntityQueryDefinitionParameter<Object>> consumer) {
-            return Utils.apply(this, consumer);
-        }
-
-        @Override
-        public <Z> Z invoke(Function<EntityQueryDefinitionParameter<Object>, Z> function) {
-            return requireNonNull(function, "function").apply(this);
         }
     }
 }

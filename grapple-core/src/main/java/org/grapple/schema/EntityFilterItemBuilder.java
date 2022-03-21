@@ -1,12 +1,7 @@
 package org.grapple.schema;
 
-import static java.util.Objects.requireNonNull;
-
-import java.util.function.Consumer;
-import java.util.function.Function;
 import org.grapple.core.Chainable;
 import org.grapple.core.ElementVisibility;
-import org.grapple.utils.Utils;
 
 public final class EntityFilterItemBuilder<X, T> implements Chainable<EntityFilterItemBuilder<X, T>> {
 
@@ -63,14 +58,5 @@ public final class EntityFilterItemBuilder<X, T> implements Chainable<EntityFilt
     public EntityFilterItemBuilder<X, T> setFilterResolver(EntityFilterItemResolver<X, T> filterResolver) {
         this.filterResolver = filterResolver;
         return this;
-    }
-
-    public EntityFilterItemBuilder<X, T> apply(Consumer<EntityFilterItemBuilder<X, T>> consumer) {
-        return Utils.apply(this, consumer);
-    }
-
-    @Override
-    public <Z> Z invoke(Function<EntityFilterItemBuilder<X, T>, Z> function) {
-        return requireNonNull(function, "function").apply(this);
     }
 }
