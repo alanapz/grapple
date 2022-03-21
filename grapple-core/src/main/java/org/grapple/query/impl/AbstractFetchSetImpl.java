@@ -1,7 +1,6 @@
 package org.grapple.query.impl;
 
 import static java.util.Collections.unmodifiableSet;
-import static java.util.Objects.requireNonNull;
 import static org.grapple.query.impl.EntityOrderByImpl.entityOrderBy;
 import static org.grapple.utils.Utils.readOnlyCopy;
 
@@ -18,6 +17,7 @@ import org.grapple.query.EntitySortKey;
 import org.grapple.query.FetchSet;
 import org.grapple.query.QueryField;
 import org.grapple.query.SortDirection;
+import org.jetbrains.annotations.NotNull;
 
 abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
 
@@ -28,8 +28,7 @@ abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
     private final Map<EntityJoin<X, ?>, FetchSet<?>> joins = new LinkedHashMap<>();
 
     @Override
-    public FetchSet<X> select(EntityField<X, ?> selection) {
-        requireNonNull(selection, "selection");
+    public FetchSet<X> select(@NotNull EntityField<X, ?> selection) {
         selections.add(selection);
         return this;
     }
@@ -46,15 +45,13 @@ abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <Y> FetchSet<Y> getJoin(EntityJoin<X, Y> join) {
-        requireNonNull(join, "join");
+    public <Y> FetchSet<Y> getJoin(@NotNull EntityJoin<X, Y> join) {
         return (FetchSet<Y>) joins.get(join);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <Y> FetchSet<Y> join(EntityJoin<X, Y> join) {
-        requireNonNull(join, "join");
+    public <Y> FetchSet<Y> join(@NotNull EntityJoin<X, Y> join) {
         final FetchSet<Y> existing = (FetchSet<Y>) joins.get(join);
         if (existing != null) {
             return existing;
@@ -65,15 +62,17 @@ abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
     }
 
     @Override
-    public <Y> FetchSet<X> join(EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer) {
-        requireNonNull(join, "join");
-        org.grapple.utils.Utils.apply(join(join), consumer);
+    public <Y> FetchSet<X> join(@NotNull EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer) {
+        final FetchSet<Y> joinedFetchSet= join(join);
+        if (consumer != null)
+        {
+            consumer.accept(joinedFetchSet);
+        }
         return this;
     }
 
     @Override
-    public FetchSet<X> filter(EntityFilter<X> filter) {
-        requireNonNull(filter, "filter");
+    public FetchSet<X> filter(@NotNull EntityFilter<X> filter) {
         if (!filter.isAlwaysTrue()) {
             filters.add(filter);
         }
@@ -86,17 +85,13 @@ abstract class AbstractFetchSetImpl<X> implements FetchSet<X> {
     }
 
     @Override
-    public FetchSet<X> orderBy(QueryField<X, ?> field, SortDirection direction) {
-        requireNonNull(field, "field");
-        requireNonNull(direction, "direction");
+    public FetchSet<X> orderBy(@NotNull QueryField<X, ?> field, @NotNull SortDirection direction) {
         fetchRoot().orderBy.add(entityOrderBy(this, direction, field));
         return this;
     }
 
     @Override
-    public FetchSet<X> orderBy(EntitySortKey<X> sortKey, SortDirection direction) {
-        requireNonNull(sortKey, "sortKey");
-        requireNonNull(direction, "direction");
+    public FetchSet<X> orderBy(@NotNull EntitySortKey<X> sortKey, @NotNull SortDirection direction) {
         fetchRoot().orderBy.add(entityOrderBy(this, direction, sortKey));
         return this;
     }

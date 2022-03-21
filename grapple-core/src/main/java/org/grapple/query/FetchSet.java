@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import org.grapple.core.Chainable;
+import org.jetbrains.annotations.NotNull;
 
 public interface FetchSet<X> extends Chainable<FetchSet<X>> {
 
@@ -13,24 +14,24 @@ public interface FetchSet<X> extends Chainable<FetchSet<X>> {
 
     EntityJoin<?, X> getJoinedBy();
 
-    FetchSet<X> select(EntityField<X, ?> selection);
+    FetchSet<X> select(@NotNull EntityField<X, ?> selection);
 
     Set<EntityField<X, ?>> getSelections();
 
-    FetchSet<X> filter(EntityFilter<X> filter);
+    FetchSet<X> filter(@NotNull EntityFilter<X> filter);
 
     Set<EntityFilter<X>> getFilters();
 
-    <Y> FetchSet<Y> join(EntityJoin<X, Y> join);
+    <Y> FetchSet<Y> join(@NotNull EntityJoin<X, Y> join);
 
-    <Y> FetchSet<X> join(EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer);
+    <Y> FetchSet<X> join(@NotNull EntityJoin<X, Y> join, Consumer<FetchSet<Y>> consumer);
 
-    <Y> FetchSet<Y> getJoin(EntityJoin<X, Y> join);
+    <Y> FetchSet<Y> getJoin(@NotNull EntityJoin<X, Y> join);
 
     Map<EntityJoin<X, ?>, FetchSet<?>> getJoins();
 
-    FetchSet<X> orderBy(QueryField<X, ?> field, SortDirection direction);
+    FetchSet<X> orderBy(@NotNull QueryField<X, ?> field, @NotNull SortDirection direction);
 
-    FetchSet<X> orderBy(EntitySortKey<X> field, SortDirection direction);
+    FetchSet<X> orderBy(@NotNull EntitySortKey<X> field, @NotNull SortDirection direction);
 
 }

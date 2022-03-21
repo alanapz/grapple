@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="grapple-core" />
+        <module name="grapple-sandbox" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="grapple-core" target="1.8" />
+      <module name="grapple-sandbox" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="grapple-core" options="-parameters -g -Xlint:all -Xlint:unchecked -Xmaxerrs 10000" />
+      <module name="grapple-sandbox" options="-parameters -Xlint:all -Xlint:unchecked -Xmaxerrs 10000" />
+    </option>
+  </component>
+</project>

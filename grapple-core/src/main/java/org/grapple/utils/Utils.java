@@ -83,14 +83,6 @@ public final class Utils {
         return (T) o;
     }
 
-    public static <T> T apply(T object, Consumer<? super T> consumer) {
-        requireNonNull(object, "object");
-        if (consumer != null) {
-            consumer.accept(object);
-        }
-        return object;
-    }
-
     public static <T extends Validatable> T applyAndValidate(T object, Consumer<? super T> consumer) {
         requireNonNull(object, "object");
         if (consumer != null) {

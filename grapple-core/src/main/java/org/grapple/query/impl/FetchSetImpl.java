@@ -1,10 +1,9 @@
 package org.grapple.query.impl;
 
-import static java.util.Objects.requireNonNull;
-
 import org.grapple.query.EntityJoin;
 import org.grapple.query.FetchSet;
 import org.grapple.query.RootFetchSet;
+import org.jetbrains.annotations.NotNull;
 
 final class FetchSetImpl<X> extends AbstractFetchSetImpl<X> {
 
@@ -14,10 +13,10 @@ final class FetchSetImpl<X> extends AbstractFetchSetImpl<X> {
 
     private final EntityJoin<?, X> joinedBy;
 
-    FetchSetImpl(RootFetchSetImpl<?> fetchRoot, FetchSet<?> parent, EntityJoin<?, X> joinedBy) {
-        this.fetchRoot = requireNonNull(fetchRoot, "fetchRoot");
-        this.parent = requireNonNull(parent, "parent");
-        this.joinedBy = requireNonNull(joinedBy, "joinedBy");
+    FetchSetImpl(@NotNull RootFetchSetImpl<?> fetchRoot, @NotNull FetchSet<?> parent, @NotNull EntityJoin<?, X> joinedBy) {
+        this.fetchRoot = fetchRoot;
+        this.parent = parent;
+        this.joinedBy = joinedBy;
     }
 
     @Override
